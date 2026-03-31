@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pkill -f \"expo\\\\|metro\\\\|node\")",
+      "Bash(brew install:*)",
+      "Bash(REACT_NATIVE_WATCHMAN_ENABLE=false npx expo start --max-workers 2)",
+      "Bash(CHOKIDAR_USEPOLLING=true npx expo start --max-workers 1)",
+      "Bash(rm -rf node_modules/.cache)",
+      "Bash(REACT_NATIVE_WATCHMAN_ENABLE=false CHOKIDAR_USEPOLLING=true npx expo start --max-workers 1)",
+      "Bash(ulimit -n 65536)",
+      "Bash(ulimit -n 4096)",
+      "Bash(ulimit -n 10000)",
+      "Bash(node node_modules/expo-cli/bin/cli.js start --max-workers 1)",
+      "Bash(launchctl limit:*)",
+      "Bash(sudo launchctl:*)",
+      "Bash(node --max-old-space-size=4096 ./node_modules/.bin/expo start)",
+      "Read(//Library/LaunchAgents/**)",
+      "Read(//usr/local/bin/**)",
+      "Read(//opt/homebrew/bin/**)",
+      "Bash(npm list:*)",
+      "Bash(npm install:*)",
+      "Bash(watchman version:*)",
+      "Bash(WATCHMAN_EMPTY_ENV_VAR=\"\" NODE_OPTIONS=\"--max-old-space-size=2048 --max-http-header-size=65536\" npx expo start --clear)",
+      "Bash(npm ls:*)",
+      "Bash(curl -s http://localhost:8082)"
+    ]
+  }
+}
