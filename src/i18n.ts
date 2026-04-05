@@ -1,5 +1,5 @@
 // Internationalization / i18n support with React Context
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 export type Language = 'en' | 'zh';
 
@@ -147,6 +147,15 @@ export interface Translations {
   logout: string;
   profile: string;
   editProfile: string;
+  email: string;
+  enterEmail: string;
+  password: string;
+  enterPassword: string;
+  forgotPassword: string;
+  noAccount: string;
+  signUp: string;
+  haveAccount: string;
+  signIn: string;
 
   // Matches & Chat
   matches: string;
@@ -290,6 +299,15 @@ const en: Translations = {
   logout: 'Logout',
   profile: 'Profile',
   editProfile: 'Edit Profile',
+  email: 'Email',
+  enterEmail: 'Enter email address',
+  password: 'Password',
+  enterPassword: 'Enter password',
+  forgotPassword: 'Forgot password?',
+  noAccount: "Don't have an account?",
+  signUp: 'Sign Up',
+  haveAccount: 'Already have an account?',
+  signIn: 'Sign In',
 
   // Matches & Chat
   matches: 'Matches',
@@ -433,6 +451,15 @@ const zh: Translations = {
   logout: '退出登录',
   profile: '个人资料',
   editProfile: '编辑资料',
+  email: '邮箱',
+  enterEmail: '请输入邮箱地址',
+  password: '密码',
+  enterPassword: '请输入密码',
+  forgotPassword: '忘记密码？',
+  noAccount: '还没有账号？',
+  signUp: '注册',
+  haveAccount: '已有账号？',
+  signIn: '登录',
 
   // Matches & Chat
   matches: '匹配',
@@ -445,44 +472,50 @@ const zh: Translations = {
 
 const translations: Record<Language, Translations> = { en, zh };
 
-// Context
+// Context - 使用 React Context 实现自动重新渲染
 interface I18nContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
   t: (key: keyof Translations) => string;
 }
 
-const I18nContext = createContext<I18nContextType>({
-  language: 'zh',
-  setLanguage: () => {},
-  t: (key) => translations['zh'][key],
-});
+const I18nContext = createContext<I18nContextType | null>(null);
 
-export const I18nProvider = I18nContext.Provider;
+export function I18nProvider({ children }: { children: ReactNode }) {
+  const [language, setLanguage] = useState<Language>('zh');
 
-export function useI18n() {
-  return useContext(I18nContext);
+  const t = (key: keyof Translations): string => {
+    return translations[language][key];
+  };
+
+  const value = { language, setLanguage, t };
+
+  return React.createElement(I18nContext.Provider, { value }, children);
 }
 
-// Legacy export for simple usage without context
-let currentLanguage: Language = 'zh';
-const languageListeners: Set<() => void> = new Set();
+// Hook: 获取国际化函数
+export function useI18n() {
+  const context = useContext(I18nContext);
+  if (!context) {
+    throw new Error('useI18n must be used within I18nProvider');
+  }
+  return context;
+}
 
-export const setLanguage = (lang: Language) => {
-  currentLanguage = lang;
-  // Notify all listeners to re-render
-  languageListeners.forEach(listener => listener());
-};
+// 便捷 Hook: 只获取翻译函数
+export function useTranslation() {
+  const { t } = useI18n();
+  return t;
+}
 
-export const getLanguage = (): Language => {
-  return currentLanguage;
-};
+// 便捷 Hook: 只获取当前语言
+export function useLanguage() {
+  const { language } = useI18n();
+  return language;
+}
 
-export const addLanguageListener = (listener: () => void) => {
-  languageListeners.add(listener);
-  return () => { languageListeners.delete(listener); };
-};
-
-export const t = (key: keyof Translations): string => {
-  return translations[currentLanguage][key];
-};
+// 兼容旧 API - 已废弃
+export const getLanguage = () => 'zh';
+export const setLanguage = (_lang: Language) => {};
+export const addLanguageListener = (_listener: () => void) => () => {};
+export const t = (key: keyof Translations): string => translations['zh'][key];

@@ -13,20 +13,14 @@ import { useFocusEffect } from '@react-navigation/native';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZE, FONT_WEIGHT } from '../theme';
 import { Pet } from '../firebase/auth';
 import { getUserPets } from '../firebase/auth';
-import { t, addLanguageListener } from '../i18n';
+import { useI18n } from '../i18n';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function PetListScreen({ navigation }: any) {
   const { user } = useAuth();
+  const { t } = useI18n();
   const [pets, setPets] = useState<Pet[]>([]);
   const [loading, setLoading] = useState(false);
-  const [, forceUpdate] = useState(0);
-
-  // Re-render when language changes
-  useEffect(() => {
-    const unsubscribe = addLanguageListener(() => forceUpdate(n => n + 1));
-    return unsubscribe;
-  }, []);
 
   const loadPets = useCallback(async () => {
     if (!user) return;

@@ -3,8 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZE, FONT_WEIGHT } from '../theme';
-import { t, addLanguageListener } from '../i18n';
-import { useState, useEffect } from 'react';
+import { useI18n } from '../i18n';
 
 interface CommunityPost {
   id: string;
@@ -65,13 +64,7 @@ const mockPosts: CommunityPost[] = [
 ];
 
 export default function CommunityScreen({ navigation }: any) {
-  const [, forceUpdate] = useState(0);
-
-  // Re-render when language changes
-  useEffect(() => {
-    const unsubscribe = addLanguageListener(() => forceUpdate(n => n + 1));
-    return unsubscribe;
-  }, []);
+  const { t } = useI18n();
 
   const renderPost = (post: CommunityPost) => (
     <TouchableOpacity key={post.id} style={styles.postCard} activeOpacity={0.7}>

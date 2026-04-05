@@ -12,7 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZE, FONT_WEIGHT } from '../theme';
-import { t, addLanguageListener } from '../i18n';
+import { useI18n } from '../i18n';
 import { Pet, Expense } from '../types';
 import { getPets, getExpenses, addExpense, saveExpenses } from '../utils/storage';
 import { mockExpenses } from '../data/mockData';
@@ -38,9 +38,9 @@ const getCategoryLabel = (key: string): string => {
 };
 
 export default function ExpensesScreen() {
+  const { t } = useI18n();
   const [pets, setPets] = useState<Pet[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [, forceUpdate] = useState(0);
   const [modalVisible, setModalVisible] = useState(false);
   const [formData, setFormData] = useState({
     petId: '',
@@ -52,12 +52,6 @@ export default function ExpensesScreen() {
 
   useEffect(() => {
     loadData();
-  }, []);
-
-  // Re-render when language changes
-  useEffect(() => {
-    const unsubscribe = addLanguageListener(() => forceUpdate(n => n + 1));
-    return unsubscribe;
   }, []);
 
   const loadData = async () => {

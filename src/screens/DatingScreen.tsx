@@ -15,7 +15,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZE, FONT_WEIGHT } from '../theme';
 import { Pet } from '../firebase/auth';
 import { getAllPets, getUserPets, likePet } from '../firebase/auth';
-import { t, addLanguageListener } from '../i18n';
+import { useI18n } from '../i18n';
 import { useAuth } from '../contexts/AuthContext';
 import PhotoCarousel from '../components/PhotoCarousel';
 import LikeModal from '../components/LikeModal';
@@ -32,6 +32,7 @@ const GREETING_MESSAGES = [
 
 export default function DatingScreen({ navigation }: any) {
   const { user } = useAuth();
+  const { t } = useI18n();
   const [datingPets, setDatingPets] = useState<Pet[]>([]);
   const [myPets, setMyPets] = useState<Pet[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -39,13 +40,6 @@ export default function DatingScreen({ navigation }: any) {
   const [showLikeModal, setShowLikeModal] = useState(false);
   const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
   const [loading, setLoading] = useState(false);
-  const [, forceUpdate] = useState(0);
-
-  // Re-render when language changes
-  useEffect(() => {
-    const unsubscribe = addLanguageListener(() => forceUpdate(n => n + 1));
-    return unsubscribe;
-  }, []);
 
   useFocusEffect(
     useCallback(() => {

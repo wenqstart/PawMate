@@ -1,12 +1,15 @@
 // Firebase auth functions - uses firebase/auth SDK directly
-import { app, firestore, realtimeDb } from './index';
+import { app, firestore, realtimeDb, auth as firebaseAuth } from './index';
 import {
   signInWithPhoneNumber,
   signInWithCredential,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   PhoneAuthProvider,
+  EmailAuthProvider,
   User,
   onAuthStateChanged as firebaseOnAuthStateChanged,
-  getAuth,
+  sendPasswordResetEmail,
 } from 'firebase/auth';
 
 import {
@@ -19,17 +22,17 @@ import {
   query,
   where,
   getDocs,
-  orderBy,
 } from 'firebase/firestore';
 import { ref, set, push, onValue, off } from 'firebase/database';
 
 // Get fresh auth instance
-const getAuthInstance = () => getAuth(app);
+export const getAuthInstance = () => firebaseAuth;
 
 // Types
 export interface UserProfile {
   uid: string;
-  phoneNumber: string;
+  email?: string;
+  phoneNumber?: string;
   nickname: string;
   avatar: string;
   createdAt: any;
@@ -73,8 +76,7 @@ export interface Message {
 
 // Auth state listener
 export const onAuthChange = (callback: (user: User | null) => void) => {
-  const authInstance = getAuthInstance();
-  return firebaseOnAuthStateChanged(authInstance, callback);
+  return firebaseOnAuthStateChanged(firebaseAuth, callback);
 };
 
 // Get current user
@@ -107,15 +109,17 @@ export const signOut = async () => {
 // Create or update user profile
 export const createUserProfile = async (
   uid: string,
-  phoneNumber: string,
+  email: string,
   nickname: string,
-  avatar: string = ''
+  avatar: string = '',
+  phoneNumber: string = ''
 ): Promise<void> => {
   const userRef = doc(firestore, 'users', uid);
   const userDoc = await getDoc(userRef);
 
   if (!userDoc.exists()) {
     await setDoc(userRef, {
+      email,
       phoneNumber,
       nickname,
       avatar,
@@ -275,11 +279,8 @@ export const likePet = async (
 // Get matches for user
 export const getUserMatches = async (userId: string): Promise<Match[]> => {
   const matchesRef = collection(firestore, 'matches');
-  const q = query(
-    matchesRef,
-    where('users', 'array-contains', userId),
-    orderBy('createdAt', 'desc')
-  );
+  // Query only by user, sort in client to avoid composite index
+  const q = query(matchesRef, where('users', 'array-contains', userId));
 
   const snapshot = await getDocs(q);
   const matches: Match[] = [];
@@ -300,6 +301,13 @@ export const getUserMatches = async (userId: string): Promise<Match[]> => {
       });
     }
   }
+
+  // Sort by createdAt in descending order
+  matches.sort((a, b) => {
+    const timeA = a.createdAt?.toMillis() || 0;
+    const timeB = b.createdAt?.toMillis() || 0;
+    return timeB - timeA;
+  });
 
   return matches;
 };
@@ -342,6 +350,26 @@ export const verifyCodeWithConfirmation = async (
   const credential = PhoneAuthProvider.credential(confirmationResult.verificationId, code);
   const result = await signInWithCredential(authInstance, credential);
   return result.user;
+};
+
+// Sign in with email and password
+export const signInWithEmail = async (email: string, password: string): Promise<User> => {
+  const authInstance = getAuthInstance();
+  const result = await signInWithEmailAndPassword(authInstance, email, password);
+  return result.user;
+};
+
+// Register with email and password
+export const registerWithEmail = async (email: string, password: string): Promise<User> => {
+  const authInstance = getAuthInstance();
+  const result = await createUserWithEmailAndPassword(authInstance, email, password);
+  return result.user;
+};
+
+// Send password reset email
+export const resetPassword = async (email: string): Promise<void> => {
+  const authInstance = getAuthInstance();
+  await sendPasswordResetEmail(authInstance, email);
 };
 
 // Update user profile

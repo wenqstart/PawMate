@@ -15,7 +15,7 @@ import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZE, FONT_WEIGHT } from '../theme
 import { Pet, Anniversary } from '../types';
 import { getPets, getAnniversaries, addAnniversary, saveAnniversaries } from '../utils/storage';
 import { mockAnniversaries } from '../data/mockData';
-import { t, addLanguageListener } from '../i18n';
+import { useI18n } from '../i18n';
 
 const TYPE_LABELS: Record<string, string> = {
   birthday: 'Birthday',
@@ -30,9 +30,9 @@ const TYPE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
 };
 
 export default function MemoriesScreen() {
+  const { t } = useI18n();
   const [pets, setPets] = useState<Pet[]>([]);
   const [anniversaries, setAnniversaries] = useState<Anniversary[]>([]);
-  const [, forceUpdate] = useState(0);
   const [modalVisible, setModalVisible] = useState(false);
   const [formData, setFormData] = useState({
     petId: '',
@@ -44,12 +44,6 @@ export default function MemoriesScreen() {
 
   useEffect(() => {
     loadData();
-  }, []);
-
-  // Re-render when language changes
-  useEffect(() => {
-    const unsubscribe = addLanguageListener(() => forceUpdate(n => n + 1));
-    return unsubscribe;
   }, []);
 
   const loadData = async () => {

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZE, FONT_WEIGHT } from '../theme
 import { Pet } from '../firebase/auth';
 import { getUserPets } from '../firebase/auth';
 import { useFocusEffect } from '@react-navigation/native';
-import { t, addLanguageListener } from '../i18n';
+import { useI18n } from '../i18n';
 import { useAuth } from '../contexts/AuthContext';
 
 const ACTION_CARDS: { key: string; icon: string; color: string; screen: string; translationKey: string }[] = [
@@ -25,15 +25,9 @@ const ACTION_CARDS: { key: string; icon: string; color: string; screen: string; 
 
 export default function HomeScreen({ navigation }: any) {
   const { user, userProfile } = useAuth();
+  const { t } = useI18n();
   const [pets, setPets] = useState<Pet[]>([]);
   const [loading, setLoading] = useState(false);
-  const [, forceUpdate] = useState(0);
-
-  // Re-render when language changes
-  useEffect(() => {
-    const unsubscribe = addLanguageListener(() => forceUpdate(n => n + 1));
-    return unsubscribe;
-  }, []);
 
   const loadPets = useCallback(async () => {
     if (!user) {
@@ -75,7 +69,7 @@ export default function HomeScreen({ navigation }: any) {
   return (
     <ScrollView
       style={styles.container}
-      showsVerticalScrollIndicator={false}
+      showsVerticalScrollIndicator={true}
       refreshControl={
         <RefreshControl refreshing={loading} onRefresh={loadPets} />
       }

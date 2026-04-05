@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform, ActivityIndicator } from 'react-native';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import { NavigationContainer, useNavigation } from '@react-navigation/native';
@@ -6,7 +6,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING } from './src/theme';
-import { Language, t as _t, addLanguageListener, setLanguage, getLanguage } from './src/i18n';
+import { I18nProvider, useI18n } from './src/i18n';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 
 // Import Screens
@@ -25,31 +25,15 @@ import ChatScreen from './src/screens/ChatScreen';
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
-function useLanguage(): Language {
-  const [, forceUpdate] = useState(0);
-
-  useEffect(() => {
-    console.log('useLanguage: subscribing');
-    const unsubscribe = addLanguageListener(() => {
-      console.log('useLanguage: language changed');
-      forceUpdate(n => n + 1);
-    });
-    return unsubscribe;
-  }, []);
-
-  return getLanguage();
-}
-
 function toggleLanguage() {
-  const currentLang = getLanguage();
-  const next = currentLang === 'en' ? 'zh' : 'en';
-  setLanguage(next);
+  const { language, setLanguage } = useI18n();
+  setLanguage(language === 'en' ? 'zh' : 'en');
 }
 
 // Custom Header
 function CustomHeader() {
   const navigation = useNavigation();
-  const lang = useLanguage();
+  const { language } = useI18n();
   const { user, userProfile } = useAuth();
 
   return (
@@ -71,7 +55,7 @@ function CustomHeader() {
             console.log('Language button pressed');
             toggleLanguage();
           }} style={styles.langButton}>
-            <Text style={styles.langButtonText}>{lang === 'en' ? 'EN' : '中'}</Text>
+            <Text style={styles.langButtonText}>{language === 'en' ? 'EN' : '中'}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -80,7 +64,7 @@ function CustomHeader() {
 }
 
 function MainTabs() {
-  useLanguage();
+  const { t } = useI18n();
   return (
     <View style={{ flex: 1 }}>
       <CustomHeader />
@@ -106,11 +90,11 @@ function MainTabs() {
           headerShown: false,
         })}
       >
-        <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: _t('home') }} />
-        <Tab.Screen name="Dating" component={DatingScreen} options={{ tabBarLabel: _t('dating') }} />
-        <Tab.Screen name="Matches" component={MatchesScreen} options={{ tabBarLabel: _t('matches') || 'Matches' }} />
-        <Tab.Screen name="Expenses" component={ExpensesScreen} options={{ tabBarLabel: _t('expenses') }} />
-        <Tab.Screen name="Memories" component={MemoriesScreen} options={{ tabBarLabel: _t('memories') }} />
+        <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: t('home') }} />
+        <Tab.Screen name="Dating" component={DatingScreen} options={{ tabBarLabel: t('dating') }} />
+        <Tab.Screen name="Matches" component={MatchesScreen} options={{ tabBarLabel: t('matches') || 'Matches' }} />
+        <Tab.Screen name="Expenses" component={ExpensesScreen} options={{ tabBarLabel: t('expenses') }} />
+        <Tab.Screen name="Memories" component={MemoriesScreen} options={{ tabBarLabel: t('memories') }} />
       </Tab.Navigator>
     </View>
   );
@@ -132,6 +116,7 @@ function AuthStack() {
 
 function AppNavigator() {
   const { user, loading } = useAuth();
+  const { t } = useI18n();
 
   if (loading) {
     return (
@@ -155,26 +140,26 @@ function AppNavigator() {
       }}
     >
       <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
-      <Stack.Screen name="Community" component={CommunityScreen} options={{ title: _t('community'), headerBackTitle: _t('cancel') }} />
-      <Stack.Screen name="AddPet" component={AddPetScreen} options={({ route }) => ({ title: (route.params as any)?.isEdit ? _t('editPet') : _t('addPet') })} />
-      <Stack.Screen name="PetDetail" component={PetDetailScreen} options={{ title: _t('petInfo') }} />
-      <Stack.Screen name="PetList" component={PetListScreen} options={{ title: _t('myPets') }} />
-      <Stack.Screen name="Chat" component={ChatScreen} options={{ title: _t('chat') || 'Chat' }} />
+      <Stack.Screen name="Community" component={CommunityScreen} options={{ title: t('community'), headerBackTitle: t('cancel') }} />
+      <Stack.Screen name="AddPet" component={AddPetScreen} options={({ route }) => ({ title: (route.params as any)?.isEdit ? t('editPet') : t('addPet') })} />
+      <Stack.Screen name="PetDetail" component={PetDetailScreen} options={{ title: t('petInfo') }} />
+      <Stack.Screen name="PetList" component={PetListScreen} options={{ title: t('myPets') }} />
+      <Stack.Screen name="Chat" component={ChatScreen} options={{ title: t('chat') || 'Chat' }} />
     </Stack.Navigator>
   );
 }
 
 export default function App() {
-  useLanguage();
-
   return (
     <>
       <ExpoStatusBar style="dark" />
-      <AuthProvider>
-        <NavigationContainer>
-          <AppNavigator />
-        </NavigationContainer>
-      </AuthProvider>
+      <I18nProvider>
+        <AuthProvider>
+          <NavigationContainer>
+            <AppNavigator />
+          </NavigationContainer>
+        </AuthProvider>
+      </I18nProvider>
     </>
   );
 }

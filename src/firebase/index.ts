@@ -4,16 +4,17 @@ import { getFirestore } from 'firebase/firestore';
 import { getDatabase } from 'firebase/database';
 import { firebaseConfig } from './config';
 
-// Initialize Firebase
+// Initialize Firebase - try/catch to handle different environments
 let app: FirebaseApp;
 let auth: any;
 let firestore: any;
 let realtimeDb: any;
 let phoneAuthProvider: any;
+let initializationError: string | null = null;
 
 try {
-  // Prevent re-initialization in dev hot reload
   if (getApps().length === 0) {
+    // For React Native (Expo)
     app = initializeApp(firebaseConfig);
     console.log('Firebase initialized successfully');
   } else {
@@ -26,14 +27,20 @@ try {
   firestore = getFirestore(app);
   realtimeDb = getDatabase(app);
 
-  console.log('Auth service:', auth ? 'available' : 'NOT available');
-} catch (error) {
+  console.log('Firebase services ready');
+} catch (error: any) {
   console.error('Firebase initialization error:', error);
+  initializationError = error.message;
 }
 
-// Export services
-export { app, auth, phoneAuthProvider, firestore, realtimeDb };
-export type { ConfirmationResult, User };
+// Export with fallback
+export const getFirebaseApp = () => {
+  if (!app && !initializationError) {
+    app = initializeApp(firebaseConfig);
+  }
+  return app;
+};
 
-// Re-export onAuthStateChanged directly from firebase/auth
+export { app, auth, firestore, realtimeDb, phoneAuthProvider };
+export type { ConfirmationResult, User };
 export { firebaseOnAuthStateChanged as onAuthStateChanged };

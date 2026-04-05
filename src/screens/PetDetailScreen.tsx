@@ -16,7 +16,7 @@ import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/dat
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOWS } from '../theme';
 import { Pet } from '../firebase/auth';
 import { deletePet as firebaseDeletePet, updatePet as firebaseUpdatePet } from '../firebase/auth';
-import { t, addLanguageListener } from '../i18n';
+import { useI18n } from '../i18n';
 import { useAuth } from '../contexts/AuthContext';
 
 interface PetDetailScreenProps {
@@ -26,17 +26,11 @@ interface PetDetailScreenProps {
 
 export default function PetDetailScreen({ route, navigation }: PetDetailScreenProps) {
   const { user } = useAuth();
+  const { t } = useI18n();
   const { pet } = route.params as { petId?: string; pet?: Pet };
   const [currentPet, setCurrentPet] = useState<Pet | null>(pet || null);
   const [isEditing, setIsEditing] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
-
-  const [, forceUpdate] = useState(0);
-
-  useEffect(() => {
-    const unsubscribe = addLanguageListener(() => forceUpdate(n => n + 1));
-    return unsubscribe;
-  }, []);
 
   const handleDelete = () => {
     if (!currentPet || !user) return;

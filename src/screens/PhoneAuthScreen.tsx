@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { sendVerificationCode, verifyCodeWithConfirmation, createUserProfile, ConfirmationResult } from '../firebase/auth';
+import { signInWithEmail, registerWithEmail, createUserProfile } from '../firebase/auth';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZE, FONT_WEIGHT } from '../theme';
 import { t } from '../i18n';
 
@@ -21,17 +21,27 @@ interface PhoneAuthScreenProps {
 }
 
 export default function PhoneAuthScreen({ onLoginSuccess }: PhoneAuthScreenProps) {
-  const [phone, setPhone] = useState('');
-  const [code, setCode] = useState('');
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState<'phone' | 'code' | 'profile'>('phone');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [nickname, setNickname] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState<'login' | 'register' | 'profile'>('login');
   const [error, setError] = useState('');
 
-  const handleSendCode = async () => {
-    if (!phone || phone.length < 11) {
-      Alert.alert(t('error'), t('enterPhone'));
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert(t('error'), t('enterEmail') + ' / ' + t('enterPassword'));
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      Alert.alert(t('error'), t('enterEmail'));
       return;
     }
 
@@ -39,88 +49,105 @@ export default function PhoneAuthScreen({ onLoginSuccess }: PhoneAuthScreenProps
     setError('');
 
     try {
-      console.log('Sending verification code to:', phone);
-      const confirmation = await sendVerificationCode(phone);
-      console.log('Confirmation received:', confirmation);
-      setConfirmationResult(confirmation);
-      setStep('code');
-      Alert.alert('验证码已发送', '请查看手机短信');
-    } catch (err: any) {
-      console.error('Send code error:', err);
-      const errorMessage = err?.message || err?.code || '发送失败';
-      setError(errorMessage);
-      Alert.alert(t('error'), '发送失败: ' + errorMessage);
-    }
-    setLoading(false);
-  };
-
-  const handleVerifyCode = async () => {
-    if (!code || code.length < 6) {
-      Alert.alert(t('error'), t('enterCode'));
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-
-    try {
-      console.log('Verifying code:', code);
-      if (confirmationResult) {
-        const user = await verifyCodeWithConfirmation(confirmationResult, code);
-        console.log('User logged in:', user?.uid);
-        if (user) {
-          setStep('profile');
-        } else {
-          onLoginSuccess(user.uid);
-        }
-      }
-    } catch (err: any) {
-      console.error('Verify error:', err);
-      const errorMessage = err?.message || err?.code || '验证失败';
-      setError(errorMessage);
-      Alert.alert(t('error'), '验证失败: ' + errorMessage);
-    }
-    setLoading(false);
-  };
-
-  const handleCompleteProfile = async () => {
-    if (!nickname.trim()) {
-      Alert.alert(t('error'), t('nickname') + ' ' + t('required'));
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const { getCurrentUser } = await import('../firebase/auth');
-      const user = getCurrentUser();
+      const user = await signInWithEmail(email, password);
+      console.log('User logged in:', user?.uid);
       if (user) {
-        await createUserProfile(user.uid, phone, nickname.trim(), '');
         onLoginSuccess(user.uid);
       }
     } catch (err: any) {
-      console.error('Profile error:', err);
-      Alert.alert(t('error'), err?.message || '保存失败');
+      console.error('Login error:', err);
+      console.error('Error code:', err.code);
+      console.error('Error message:', err.message);
+
+      if (err.code === 'auth/invalid-email') {
+        Alert.alert(t('error'), t('enterEmail'));
+      } else if (err.code === 'auth/user-not-found') {
+        Alert.alert(t('error'), t('noAccount') + ' ' + t('signUp'));
+      } else if (err.code === 'auth/wrong-password') {
+        Alert.alert(t('error'), t('enterPassword'));
+      } else {
+        Alert.alert(t('error'), err.message || t('loginFailed'));
+      }
     }
     setLoading(false);
   };
 
-  const renderPhoneStep = () => (
+  const handleRegister = async () => {
+    if (!email || !password || !confirmPassword || !nickname.trim()) {
+      Alert.alert(t('error'), t('required'));
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      Alert.alert(t('error'), t('enterEmail'));
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert(t('error'), t('enterPassword') + ' (min 6 chars)');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert(t('error'), 'Passwords do not match');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const user = await registerWithEmail(email, password);
+      console.log('User registered:', user?.uid);
+
+      // Create user profile
+      await createUserProfile(user.uid, email, nickname.trim(), '', '');
+      onLoginSuccess(user.uid);
+    } catch (err: any) {
+      console.error('Register error:', err);
+      console.error('Error code:', err.code);
+      console.error('Error message:', err.message);
+
+      if (err.code === 'auth/email-already-in-use') {
+        Alert.alert(t('error'), 'Email already in use');
+      } else if (err.code === 'auth/invalid-email') {
+        Alert.alert(t('error'), t('enterEmail'));
+      } else {
+        Alert.alert(t('error'), err.message || t('loginFailed'));
+      }
+    }
+    setLoading(false);
+  };
+
+  const renderLoginStep = () => (
     <View style={styles.stepContainer}>
       <View style={styles.iconContainer}>
-        <Ionicons name="phone-portrait-outline" size={60} color={COLORS.primary} />
+        <Ionicons name="mail-outline" size={60} color={COLORS.primary} />
       </View>
-      <Text style={styles.title}>{t('enterPhone')}</Text>
-      <Text style={styles.subtitle}>{t('login')}</Text>
+      <Text style={styles.title}>{t('signIn')}</Text>
+      <Text style={styles.subtitle}>{t('enterEmail')}</Text>
 
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
-          placeholder="13800000000"
+          placeholder={t('enterEmail')}
           placeholderTextColor={COLORS.textTertiary}
-          value={phone}
-          onChangeText={setPhone}
-          keyboardType="phone-pad"
-          maxLength={11}
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+      </View>
+
+      <View style={styles.inputContainer}>
+        <TextInput
+          style={styles.input}
+          placeholder={t('enterPassword')}
+          placeholderTextColor={COLORS.textTertiary}
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
         />
       </View>
 
@@ -128,65 +155,69 @@ export default function PhoneAuthScreen({ onLoginSuccess }: PhoneAuthScreenProps
 
       <TouchableOpacity
         style={[styles.button, loading && styles.buttonDisabled]}
-        onPress={handleSendCode}
+        onPress={handleLogin}
         disabled={loading}
       >
         {loading ? (
           <ActivityIndicator color={COLORS.textInverse} />
         ) : (
-          <Text style={styles.buttonText}>{t('sendCode')}</Text>
+          <Text style={styles.buttonText}>{t('signIn')}</Text>
         )}
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        onPress={() => { setStep('register'); setError(''); }}
+        style={styles.switchButton}
+      >
+        <Text style={styles.switchText}>
+          {t('noAccount')} {t('signUp')}
+        </Text>
       </TouchableOpacity>
     </View>
   );
 
-  const renderCodeStep = () => (
+  const renderRegisterStep = () => (
     <View style={styles.stepContainer}>
       <View style={styles.iconContainer}>
-        <Ionicons name="chatbubble-ellipses-outline" size={60} color={COLORS.primary} />
+        <Ionicons name="person-add-outline" size={60} color={COLORS.primary} />
       </View>
-      <Text style={styles.title}>{t('enterCode')}</Text>
-      <Text style={styles.subtitle}>+86 {phone}</Text>
+      <Text style={styles.title}>{t('signUp')}</Text>
+      <Text style={styles.subtitle}>{t('completeProfile')}</Text>
 
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
-          placeholder="000000"
+          placeholder={t('enterEmail')}
           placeholderTextColor={COLORS.textTertiary}
-          value={code}
-          onChangeText={setCode}
-          keyboardType="number-pad"
-          maxLength={6}
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
         />
       </View>
 
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-      <TouchableOpacity
-        style={[styles.button, loading && styles.buttonDisabled]}
-        onPress={handleVerifyCode}
-        disabled={loading}
-      >
-        {loading ? (
-          <ActivityIndicator color={COLORS.textInverse} />
-        ) : (
-          <Text style={styles.buttonText}>{t('verifyCode')}</Text>
-        )}
-      </TouchableOpacity>
-
-      <TouchableOpacity onPress={handleSendCode} style={styles.resendButton}>
-        <Text style={styles.resendText}>{t('resendCode')}</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  const renderProfileStep = () => (
-    <View style={styles.stepContainer}>
-      <View style={styles.iconContainer}>
-        <Ionicons name="person-circle-outline" size={60} color={COLORS.primary} />
+      <View style={styles.inputContainer}>
+        <TextInput
+          style={styles.input}
+          placeholder={t('enterPassword')}
+          placeholderTextColor={COLORS.textTertiary}
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
       </View>
-      <Text style={styles.title}>{t('completeProfile')}</Text>
-      <Text style={styles.subtitle}>{t('nickname')}</Text>
+
+      <View style={styles.inputContainer}>
+        <TextInput
+          style={styles.input}
+          placeholder="Confirm Password"
+          placeholderTextColor={COLORS.textTertiary}
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          secureTextEntry
+        />
+      </View>
 
       <View style={styles.inputContainer}>
         <TextInput
@@ -199,16 +230,27 @@ export default function PhoneAuthScreen({ onLoginSuccess }: PhoneAuthScreenProps
         />
       </View>
 
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
       <TouchableOpacity
         style={[styles.button, loading && styles.buttonDisabled]}
-        onPress={handleCompleteProfile}
+        onPress={handleRegister}
         disabled={loading}
       >
         {loading ? (
           <ActivityIndicator color={COLORS.textInverse} />
         ) : (
-          <Text style={styles.buttonText}>{t('continueText')}</Text>
+          <Text style={styles.buttonText}>{t('signUp')}</Text>
         )}
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        onPress={() => { setStep('login'); setError(''); }}
+        style={styles.switchButton}
+      >
+        <Text style={styles.switchText}>
+          {t('haveAccount')} {t('signIn')}
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -219,9 +261,8 @@ export default function PhoneAuthScreen({ onLoginSuccess }: PhoneAuthScreenProps
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {step === 'phone' && renderPhoneStep()}
-        {step === 'code' && renderCodeStep()}
-        {step === 'profile' && renderProfileStep()}
+        {step === 'login' && renderLoginStep()}
+        {step === 'register' && renderRegisterStep()}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -256,7 +297,7 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     width: '100%',
-    marginBottom: SPACING.lg,
+    marginBottom: SPACING.md,
   },
   input: {
     backgroundColor: COLORS.surface,
@@ -275,6 +316,7 @@ const styles = StyleSheet.create({
     borderRadius: BORDER_RADIUS.md,
     width: '100%',
     alignItems: 'center',
+    marginTop: SPACING.sm,
   },
   buttonDisabled: {
     opacity: 0.6,
@@ -284,10 +326,10 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.lg,
     fontWeight: FONT_WEIGHT.semibold,
   },
-  resendButton: {
-    marginTop: SPACING.lg,
+  switchButton: {
+    marginTop: SPACING.xl,
   },
-  resendText: {
+  switchText: {
     color: COLORS.primary,
     fontSize: FONT_SIZE.md,
   },

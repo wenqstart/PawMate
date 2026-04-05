@@ -17,7 +17,7 @@ import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/dat
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZE, FONT_WEIGHT } from '../theme';
 import { Pet } from '../firebase/auth';
 import { addPet, updatePet } from '../firebase/auth';
-import { t, addLanguageListener } from '../i18n';
+import { useI18n } from '../i18n';
 import { useAuth } from '../contexts/AuthContext';
 
 interface AddPetScreenProps {
@@ -32,17 +32,10 @@ interface AddPetScreenProps {
 
 export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
   const { user, userProfile } = useAuth();
+  const { t } = useI18n();
   const editPet = route?.params?.pet;
   const isEdit = route?.params?.isEdit || false;
   const [loading, setLoading] = useState(false);
-
-  const [, forceUpdate] = useState(0);
-
-  // Re-render when language changes
-  useEffect(() => {
-    const unsubscribe = addLanguageListener(() => forceUpdate(n => n + 1));
-    return unsubscribe;
-  }, []);
 
   const [formData, setFormData] = useState({
     name: editPet?.name || '',
