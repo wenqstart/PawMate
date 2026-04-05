@@ -11,30 +11,36 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
-import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, FONT_SIZE } from '../theme';
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZE, FONT_WEIGHT } from '../theme';
+import { t, addLanguageListener } from '../i18n';
 import { Pet, Expense } from '../types';
 import { getPets, getExpenses, addExpense, saveExpenses } from '../utils/storage';
 import { mockExpenses } from '../data/mockData';
 
-const CATEGORY_ICONS: Record<string, string> = {
-  food: '🍖',
-  medical: '💊',
-  toys: '🎾',
-  grooming: '✂️',
-  other: '📦',
+const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  food: 'restaurant',
+  medical: 'medical',
+  toys: 'game-controller',
+  grooming: 'cut',
+  other: 'cube',
 };
 
-const CATEGORY_LABELS: Record<string, string> = {
-  food: '食品',
-  medical: '医疗',
-  toys: '玩具',
-  grooming: '美容',
-  other: '其他',
+// Category labels from i18n
+const getCategoryLabel = (key: string): string => {
+  const labels: Record<string, keyof typeof import('../i18n').en> = {
+    food: 'food',
+    medical: 'medical',
+    toys: 'toys',
+    grooming: 'grooming',
+    other: 'other',
+  };
+  return t(labels[key] || 'other');
 };
 
 export default function ExpensesScreen() {
   const [pets, setPets] = useState<Pet[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [, forceUpdate] = useState(0);
   const [modalVisible, setModalVisible] = useState(false);
   const [formData, setFormData] = useState({
     petId: '',
@@ -48,10 +54,16 @@ export default function ExpensesScreen() {
     loadData();
   }, []);
 
+  // Re-render when language changes
+  useEffect(() => {
+    const unsubscribe = addLanguageListener(() => forceUpdate(n => n + 1));
+    return unsubscribe;
+  }, []);
+
   const loadData = async () => {
     const loadedPets = await getPets();
     setPets(loadedPets);
-    
+
     let loadedExpenses = await getExpenses();
     if (loadedExpenses.length === 0) {
       loadedExpenses = mockExpenses;
@@ -62,7 +74,7 @@ export default function ExpensesScreen() {
 
   const handleSubmit = async () => {
     if (!formData.petId || !formData.amount || !formData.description) {
-      Alert.alert('提示', '请填写完整信息');
+      Alert.alert('Info', 'Please fill in all fields');
       return;
     }
 
@@ -77,7 +89,7 @@ export default function ExpensesScreen() {
 
     await addExpense(newExpense);
     setExpenses([...expenses, newExpense]);
-    Alert.alert('成功', '记账成功！');
+    Alert.alert('Success', 'Expense added');
     setModalVisible(false);
     resetForm();
   };
@@ -94,7 +106,7 @@ export default function ExpensesScreen() {
 
   const getPetName = (petId: string) => {
     const pet = pets.find(p => p.id === petId);
-    return pet?.name || '未知宠物';
+    return pet?.name || 'Unknown';
   };
 
   const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
@@ -102,7 +114,7 @@ export default function ExpensesScreen() {
     .filter(exp => {
       const expDate = new Date(exp.date);
       const now = new Date();
-      return expDate.getMonth() === now.getMonth() && 
+      return expDate.getMonth() === now.getMonth() &&
              expDate.getFullYear() === now.getFullYear();
     })
     .reduce((sum, exp) => sum + exp.amount, 0);
@@ -118,57 +130,61 @@ export default function ExpensesScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.headerTitle}>宠物记账</Text>
-            <Text style={styles.headerSubtitle}>记录每一笔宠物开支</Text>
+            <Text style={styles.headerTitle}>{t('expensesAction')}</Text>
+            <Text style={styles.headerSubtitle}>{t('trackSpending')}</Text>
           </View>
           <TouchableOpacity
             style={styles.addButton}
             onPress={() => setModalVisible(true)}
           >
-            <Ionicons name="add" size={24} color={COLORS.white} />
+            <Ionicons name="add" size={22} color={COLORS.textInverse} />
           </TouchableOpacity>
         </View>
 
-        {/* Statistics Cards */}
+        {/* Stats */}
         <View style={styles.statsContainer}>
-          <View style={[styles.statCard, { backgroundColor: '#FFE9DC' }]}>
-            <View style={[styles.statIcon, { backgroundColor: COLORS.primary }]}>
-              <Ionicons name="wallet" size={24} color={COLORS.white} />
+          <View style={styles.statCard}>
+            <View style={[styles.statIcon, styles.statIconPrimary]}>
+              <Ionicons name="wallet" size={20} color={COLORS.textInverse} />
             </View>
-            <Text style={styles.statLabel}>总开支</Text>
-            <Text style={styles.statValue}>¥{totalExpenses.toFixed(2)}</Text>
+            <Text style={styles.statLabel}>{t('total')}</Text>
+            <Text style={styles.statValue}>${totalExpenses.toFixed(2)}</Text>
           </View>
 
-          <View style={[styles.statCard, { backgroundColor: '#FFF4E0' }]}>
-            <View style={[styles.statIcon, { backgroundColor: COLORS.secondary }]}>
-              <Ionicons name="calendar" size={24} color={COLORS.white} />
+          <View style={styles.statCard}>
+            <View style={[styles.statIcon, styles.statIconSecondary]}>
+              <Ionicons name="calendar" size={20} color={COLORS.textInverse} />
             </View>
-            <Text style={styles.statLabel}>本月开支</Text>
-            <Text style={styles.statValue}>¥{thisMonthExpenses.toFixed(2)}</Text>
+            <Text style={styles.statLabel}>{t('thisMonth')}</Text>
+            <Text style={styles.statValue}>${thisMonthExpenses.toFixed(2)}</Text>
           </View>
 
-          <View style={[styles.statCard, { backgroundColor: '#E8F5E9' }]}>
-            <View style={[styles.statIcon, { backgroundColor: COLORS.success }]}>
-              <Ionicons name="trending-up" size={24} color={COLORS.white} />
+          <View style={styles.statCard}>
+            <View style={[styles.statIcon, styles.statIconTertiary]}>
+              <Ionicons name="list" size={20} color={COLORS.textInverse} />
             </View>
-            <Text style={styles.statLabel}>记录数</Text>
+            <Text style={styles.statLabel}>{t('records')}</Text>
             <Text style={styles.statValue}>{expenses.length}</Text>
           </View>
         </View>
 
-        {/* Category Summary */}
+        {/* Categories */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>分类统计</Text>
+          <Text style={styles.sectionTitle}>{t('byCategory')}</Text>
           <View style={styles.categoryGrid}>
             {Object.entries(categoryTotals).map(([category, total]) => (
               <View key={category} style={styles.categoryCard}>
-                <Text style={styles.categoryEmoji}>
-                  {CATEGORY_ICONS[category as keyof typeof CATEGORY_ICONS]}
-                </Text>
+                <View style={styles.categoryIconContainer}>
+                  <Ionicons
+                    name={CATEGORY_ICONS[category as keyof typeof CATEGORY_ICONS] || 'cube'}
+                    size={20}
+                    color={COLORS.textSecondary}
+                  />
+                </View>
                 <Text style={styles.categoryLabel}>
-                  {CATEGORY_LABELS[category as keyof typeof CATEGORY_LABELS]}
+                  {getCategoryLabel(category)}
                 </Text>
-                <Text style={styles.categoryTotal}>¥{total.toFixed(2)}</Text>
+                <Text style={styles.categoryTotal}>${total.toFixed(2)}</Text>
               </View>
             ))}
           </View>
@@ -176,20 +192,24 @@ export default function ExpensesScreen() {
 
         {/* Expense List */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>开支记录</Text>
+          <Text style={styles.sectionTitle}>{t('recent')}</Text>
           {expenses.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Ionicons name="wallet-outline" size={64} color={COLORS.gray} />
-              <Text style={styles.emptyText}>还没有记账记录</Text>
+              <Ionicons name="wallet-outline" size={40} color={COLORS.textTertiary} />
+              <Text style={styles.emptyText}>{t('noExpenses')}</Text>
             </View>
           ) : (
             expenses
               .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
               .map((expense) => (
                 <View key={expense.id} style={styles.expenseCard}>
-                  <Text style={styles.expenseEmoji}>
-                    {CATEGORY_ICONS[expense.category]}
-                  </Text>
+                  <View style={styles.expenseIconContainer}>
+                    <Ionicons
+                      name={CATEGORY_ICONS[expense.category] || 'cube'}
+                      size={20}
+                      color={COLORS.textSecondary}
+                    />
+                  </View>
                   <View style={styles.expenseInfo}>
                     <Text style={styles.expenseDescription}>{expense.description}</Text>
                     <View style={styles.expenseDetails}>
@@ -197,12 +217,12 @@ export default function ExpensesScreen() {
                         <Text style={styles.petBadgeText}>{getPetName(expense.petId)}</Text>
                       </View>
                       <Text style={styles.expenseCategory}>
-                        {CATEGORY_LABELS[expense.category]}
+                        {getCategoryLabel(expense.category)}
                       </Text>
                       <Text style={styles.expenseDate}>· {expense.date}</Text>
                     </View>
                   </View>
-                  <Text style={styles.expenseAmount}>¥{expense.amount.toFixed(2)}</Text>
+                  <Text style={styles.expenseAmount}>${expense.amount.toFixed(2)}</Text>
                 </View>
               ))
           )}
@@ -211,7 +231,7 @@ export default function ExpensesScreen() {
         <View style={{ height: SPACING.xxl }} />
       </ScrollView>
 
-      {/* Add Expense Modal */}
+      {/* Modal */}
       <Modal
         visible={modalVisible}
         animationType="slide"
@@ -221,21 +241,21 @@ export default function ExpensesScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>添加开支记录</Text>
+              <Text style={styles.modalTitle}>{t('addExpense')}</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={24} color={COLORS.text} />
+                <Ionicons name="close" size={22} color={COLORS.text} />
               </TouchableOpacity>
             </View>
 
             <ScrollView>
               <View style={styles.formGroup}>
-                <Text style={styles.label}>选择宠物</Text>
+                <Text style={styles.label}>{t('pet')}</Text>
                 <View style={styles.pickerContainer}>
                   <Picker
                     selectedValue={formData.petId}
                     onValueChange={(value) => setFormData({ ...formData, petId: value })}
                   >
-                    <Picker.Item label="选择宠物" value="" />
+                    <Picker.Item label={t('selectPet')} value="" />
                     {pets.map((pet) => (
                       <Picker.Item key={pet.id} label={pet.name} value={pet.id} />
                     ))}
@@ -244,7 +264,7 @@ export default function ExpensesScreen() {
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.label}>分类</Text>
+                <Text style={styles.label}>{t('category')}</Text>
                 <View style={styles.pickerContainer}>
                   <Picker
                     selectedValue={formData.category}
@@ -252,10 +272,10 @@ export default function ExpensesScreen() {
                       setFormData({ ...formData, category: value })
                     }
                   >
-                    {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+                    {['food', 'medical', 'toys', 'grooming', 'other'].map((key) => (
                       <Picker.Item
                         key={key}
-                        label={`${CATEGORY_ICONS[key]} ${label}`}
+                        label={`${CATEGORY_ICONS[key as keyof typeof CATEGORY_ICONS]} ${getCategoryLabel(key)}`}
                         value={key}
                       />
                     ))}
@@ -264,7 +284,7 @@ export default function ExpensesScreen() {
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.label}>金额 (元)</Text>
+                <Text style={styles.label}>{t('amount')} ($)</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="0.00"
@@ -275,10 +295,10 @@ export default function ExpensesScreen() {
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.label}>描述</Text>
+                <Text style={styles.label}>{t('description')}</Text>
                 <TextInput
                   style={[styles.input, styles.textArea]}
-                  placeholder="记录一下这笔开支..."
+                  placeholder={t('description')}
                   multiline
                   numberOfLines={3}
                   value={formData.description}
@@ -287,7 +307,7 @@ export default function ExpensesScreen() {
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.label}>日期</Text>
+                <Text style={styles.label}>{t('date')}</Text>
                 <TextInput
                   style={styles.input}
                   value={formData.date}
@@ -296,7 +316,7 @@ export default function ExpensesScreen() {
               </View>
 
               <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-                <Text style={styles.submitButtonText}>保存</Text>
+                <Text style={styles.submitButtonText}>{t('save')}</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>
@@ -315,46 +335,55 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    padding: SPACING.md,
+    padding: SPACING.lg,
   },
   headerTitle: {
     fontSize: FONT_SIZE.xxl,
-    fontWeight: 'bold',
+    fontWeight: FONT_WEIGHT.semibold,
     color: COLORS.text,
   },
   headerSubtitle: {
-    fontSize: FONT_SIZE.md,
+    fontSize: FONT_SIZE.sm,
     color: COLORS.textSecondary,
     marginTop: SPACING.xs,
   },
   addButton: {
-    backgroundColor: COLORS.primary,
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 44,
     borderRadius: BORDER_RADIUS.round,
+    backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    ...SHADOWS.md,
   },
   statsContainer: {
     flexDirection: 'row',
-    paddingHorizontal: SPACING.md,
+    paddingHorizontal: SPACING.lg,
     gap: SPACING.sm,
   },
   statCard: {
     flex: 1,
+    backgroundColor: COLORS.surface,
     padding: SPACING.md,
     borderRadius: BORDER_RADIUS.lg,
-    alignItems: 'center',
-    ...SHADOWS.sm,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   statIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: BORDER_RADIUS.round,
+    width: 36,
+    height: 36,
+    borderRadius: BORDER_RADIUS.md,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: SPACING.sm,
+  },
+  statIconPrimary: {
+    backgroundColor: COLORS.accent,
+  },
+  statIconSecondary: {
+    backgroundColor: COLORS.info,
+  },
+  statIconTertiary: {
+    backgroundColor: COLORS.success,
   },
   statLabel: {
     fontSize: FONT_SIZE.xs,
@@ -363,15 +392,15 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: FONT_SIZE.lg,
-    fontWeight: 'bold',
+    fontWeight: FONT_WEIGHT.semibold,
     color: COLORS.text,
   },
   section: {
-    padding: SPACING.md,
+    padding: SPACING.lg,
   },
   sectionTitle: {
     fontSize: FONT_SIZE.lg,
-    fontWeight: 'bold',
+    fontWeight: FONT_WEIGHT.semibold,
     color: COLORS.text,
     marginBottom: SPACING.md,
   },
@@ -382,37 +411,49 @@ const styles = StyleSheet.create({
   },
   categoryCard: {
     width: '31%',
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.surface,
     padding: SPACING.md,
     borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     alignItems: 'center',
-    ...SHADOWS.sm,
   },
-  categoryEmoji: {
-    fontSize: FONT_SIZE.xxxl,
+  categoryIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: COLORS.divider,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: SPACING.xs,
   },
   categoryLabel: {
     fontSize: FONT_SIZE.xs,
     color: COLORS.textSecondary,
-    marginBottom: SPACING.xs,
+    marginBottom: 2,
   },
   categoryTotal: {
     fontSize: FONT_SIZE.sm,
-    fontWeight: 'bold',
+    fontWeight: FONT_WEIGHT.semibold,
     color: COLORS.text,
   },
   expenseCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.surface,
     padding: SPACING.md,
     borderRadius: BORDER_RADIUS.md,
     marginBottom: SPACING.sm,
-    ...SHADOWS.sm,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
-  expenseEmoji: {
-    fontSize: FONT_SIZE.xxxl,
+  expenseIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: COLORS.divider,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: SPACING.md,
   },
   expenseInfo: {
@@ -420,7 +461,7 @@ const styles = StyleSheet.create({
   },
   expenseDescription: {
     fontSize: FONT_SIZE.md,
-    fontWeight: '600',
+    fontWeight: FONT_WEIGHT.medium,
     color: COLORS.text,
     marginBottom: SPACING.xs,
   },
@@ -430,38 +471,39 @@ const styles = StyleSheet.create({
     gap: SPACING.xs,
   },
   petBadge: {
-    backgroundColor: '#FFE9DC',
+    backgroundColor: COLORS.divider,
     paddingHorizontal: SPACING.sm,
     paddingVertical: 2,
     borderRadius: BORDER_RADIUS.sm,
   },
   petBadgeText: {
     fontSize: FONT_SIZE.xs,
-    color: COLORS.primary,
-    fontWeight: '600',
+    color: COLORS.textSecondary,
+    fontWeight: FONT_WEIGHT.medium,
   },
   expenseCategory: {
     fontSize: FONT_SIZE.xs,
-    color: COLORS.textSecondary,
+    color: COLORS.textTertiary,
   },
   expenseDate: {
     fontSize: FONT_SIZE.xs,
-    color: COLORS.textSecondary,
+    color: COLORS.textTertiary,
   },
   expenseAmount: {
     fontSize: FONT_SIZE.lg,
-    fontWeight: 'bold',
+    fontWeight: FONT_WEIGHT.semibold,
     color: COLORS.text,
   },
   emptyContainer: {
-    backgroundColor: COLORS.white,
-    padding: SPACING.xxl,
+    backgroundColor: COLORS.surface,
+    padding: SPACING.xl,
     borderRadius: BORDER_RADIUS.lg,
     alignItems: 'center',
-    ...SHADOWS.sm,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   emptyText: {
-    fontSize: FONT_SIZE.md,
+    fontSize: FONT_SIZE.sm,
     color: COLORS.textSecondary,
     marginTop: SPACING.md,
   },
@@ -471,7 +513,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.surface,
     borderTopLeftRadius: BORDER_RADIUS.xl,
     borderTopRightRadius: BORDER_RADIUS.xl,
     padding: SPACING.lg,
@@ -485,15 +527,15 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: FONT_SIZE.xl,
-    fontWeight: 'bold',
+    fontWeight: FONT_WEIGHT.semibold,
     color: COLORS.text,
   },
   formGroup: {
     marginBottom: SPACING.md,
   },
   label: {
-    fontSize: FONT_SIZE.md,
-    fontWeight: '600',
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.medium,
     color: COLORS.text,
     marginBottom: SPACING.sm,
   },
@@ -522,11 +564,10 @@ const styles = StyleSheet.create({
     borderRadius: BORDER_RADIUS.md,
     alignItems: 'center',
     marginTop: SPACING.md,
-    ...SHADOWS.sm,
   },
   submitButtonText: {
     fontSize: FONT_SIZE.md,
-    fontWeight: 'bold',
-    color: COLORS.white,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: COLORS.textInverse,
   },
 });

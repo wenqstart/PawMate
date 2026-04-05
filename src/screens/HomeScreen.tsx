@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,22 +6,32 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
-  Dimensions,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, FONT_SIZE } from '../theme';
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZE, FONT_WEIGHT } from '../theme';
 import { Pet } from '../types';
 import { getPets, savePets } from '../utils/storage';
 import { mockPets } from '../data/mockData';
 import { useFocusEffect } from '@react-navigation/native';
+import { t, addLanguageListener } from '../i18n';
 
-const { width } = Dimensions.get('window');
+const ACTION_CARDS = [
+  { key: 'dating', icon: 'heart', color: '#C4A484', screen: 'Dating' },
+  { key: 'expenses', icon: 'wallet', color: '#5C7A99', screen: 'Expenses' },
+  { key: 'memories', icon: 'calendar', color: '#4A7C59', screen: 'Memories' },
+  { key: 'addPet', icon: 'add-circle', color: '#1A1A1A', screen: 'AddPet' },
+];
 
 export default function HomeScreen({ navigation }: any) {
   const [pets, setPets] = useState<Pet[]>([]);
+  const [, forceUpdate] = useState(0);
 
-  // 使用 useFocusEffect 在页面获得焦点时刷新数据
+  // Re-render when language changes
+  useEffect(() => {
+    const unsubscribe = addLanguageListener(() => forceUpdate(n => n + 1));
+    return unsubscribe;
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       loadPets();
@@ -44,60 +54,55 @@ export default function HomeScreen({ navigation }: any) {
     const months = today.getMonth() - birth.getMonth();
 
     if (years === 0) {
-      return `${months}个月`;
+      return `${months}mo`;
     } else if (months < 0) {
-      return `${years - 1}岁${12 + months}个月`;
+      return `${years - 1}y ${12 + months}mo`;
     } else {
-      return `${years}岁${months}个月`;
+      return `${years}y ${months}mo`;
     }
   };
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Welcome Section */}
-      <LinearGradient
-        colors={[COLORS.gradientStart, COLORS.gradientEnd]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.welcomeCard}
-      >
-        <Text style={styles.welcomeTitle}>欢迎来到PawMate！</Text>
-        <Text style={styles.welcomeSubtitle}>
-          管理你的宠物，记录美好时光，寻找合适的伴侣
-        </Text>
-        <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
-            <Text style={styles.statEmoji}>🐾</Text>
-            <Text style={styles.statText}>{pets.length} 只宠物</Text>
+      <View style={styles.welcomeSection}>
+        <Text style={styles.welcomeTitle}>{t('welcome')}</Text>
+        <Text style={styles.welcomeSubtitle}>{t('welcomeSubtitle')}</Text>
+        <View style={styles.statsRow}>
+          <View style={styles.statPill}>
+            <Ionicons name="paw" size={14} color={COLORS.primary} />
+            <Text style={styles.statText}>{pets.length} {t('pets')}</Text>
           </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statEmoji}>💝</Text>
-            <Text style={styles.statText}>待匹配</Text>
+          <View style={styles.statPill}>
+            <Ionicons name="heart-outline" size={14} color={COLORS.primary} />
+            <Text style={styles.statText}>{t('pending')}</Text>
           </View>
         </View>
-      </LinearGradient>
+      </View>
 
       {/* My Pets Section */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <View style={styles.sectionTitleContainer}>
-            <Ionicons name="paw" size={20} color={COLORS.primary} />
-            <Text style={styles.sectionTitle}>我的宠物</Text>
-          </View>
+          <Text style={styles.sectionTitle}>{t('myPets')}</Text>
           <TouchableOpacity onPress={() => navigation.navigate('AddPet')}>
-            <Text style={styles.addButton}>添加宠物</Text>
+            <View style={styles.addLink}>
+              <Text style={styles.addLinkText}>{t('add')}</Text>
+              <Ionicons name="add" size={16} color={COLORS.primary} />
+            </View>
           </TouchableOpacity>
         </View>
 
         {pets.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="paw-outline" size={64} color={COLORS.gray} />
-            <Text style={styles.emptyText}>还没有添加宠物</Text>
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIconContainer}>
+              <Ionicons name="paw" size={32} color={COLORS.textTertiary} />
+            </View>
+            <Text style={styles.emptyText}>{t('noPets')}</Text>
             <TouchableOpacity
-              style={styles.addPetButton}
+              style={styles.primaryButton}
               onPress={() => navigation.navigate('AddPet')}
             >
-              <Text style={styles.addPetButtonText}>添加第一只宠物</Text>
+              <Text style={styles.primaryButtonText}>{t('addFirstPet')}</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -107,81 +112,75 @@ export default function HomeScreen({ navigation }: any) {
                 key={pet.id}
                 style={styles.petCard}
                 onPress={() => navigation.navigate('PetDetail', { petId: pet.id })}
+                activeOpacity={0.7}
               >
-                <Image source={{ uri: pet.avatar }} style={styles.petAvatar} />
+                <View style={styles.petAvatarContainer}>
+                  <Image source={{ uri: pet.avatar }} style={styles.petAvatar} />
+                </View>
                 <View style={styles.petInfo}>
-                  <View style={styles.petHeader}>
+                  <View style={styles.petNameRow}>
                     <Text style={styles.petName}>{pet.name}</Text>
-                    <Text style={styles.petGenderIcon}>
-                      {pet.gender === 'male' ? '🦁' : '🌸'}
-                    </Text>
+                    <View style={[
+                      styles.genderBadge,
+                      pet.gender === 'male' ? styles.genderMale : styles.genderFemale
+                    ]}>
+                      <Ionicons
+                        name={pet.gender === 'male' ? 'male' : 'female'}
+                        size={12}
+                        color={pet.gender === 'male' ? '#5C7A99' : '#8B3A3A'}
+                      />
+                    </View>
                   </View>
                   <Text style={styles.petBreed}>
                     {pet.breed} · {calculateAge(pet.birthday)}
                   </Text>
-                  <View style={styles.personalityContainer}>
+                  <View style={styles.tagsRow}>
                     {pet.personality.slice(0, 3).map((trait, index) => (
-                      <View key={index} style={styles.personalityTag}>
-                        <Text style={styles.personalityText}>{trait}</Text>
+                      <View key={index} style={styles.tag}>
+                        <Text style={styles.tagText}>{trait}</Text>
                       </View>
                     ))}
                   </View>
                 </View>
-                <Ionicons name="heart" size={24} color={COLORS.primary} />
+                <Ionicons name="heart-outline" size={20} color={COLORS.textTertiary} />
               </TouchableOpacity>
             ))}
             {pets.length > 2 && (
-              <TouchableOpacity style={styles.showMoreButton}>
-                <Text style={styles.showMoreText}>查看更多 ({pets.length - 2})</Text>
-                <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
+              <TouchableOpacity style={styles.showMoreButton} onPress={() => navigation.navigate('PetList')}>
+                <Text style={styles.showMoreText}>{t('viewAll')} ({pets.length - 2})</Text>
+                <Ionicons name="chevron-forward" size={14} color={COLORS.textSecondary} />
               </TouchableOpacity>
             )}
           </>
         )}
       </View>
 
-      {/* Quick Actions */}
+      {/* Quick Actions - Horizontal 2x2 Grid */}
       <View style={styles.section}>
         <View style={styles.actionsGrid}>
-          <TouchableOpacity
-            style={[styles.actionCard, { backgroundColor: '#FFE9DC' }]}
-            onPress={() => navigation.navigate('Dating')}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: COLORS.primary }]}>
-              <Ionicons name="heart" size={24} color={COLORS.white} />
-            </View>
-            <Text style={styles.actionLabel}>宠物相亲</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.actionCard, { backgroundColor: '#FFF4E0' }]}
-            onPress={() => navigation.navigate('Expenses')}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: COLORS.secondary }]}>
-              <Ionicons name="wallet" size={24} color={COLORS.white} />
-            </View>
-            <Text style={styles.actionLabel}>记账</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.actionCard, { backgroundColor: '#E8F5E9' }]}
-            onPress={() => navigation.navigate('Memories')}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: COLORS.success }]}>
-              <Ionicons name="calendar" size={24} color={COLORS.white} />
-            </View>
-            <Text style={styles.actionLabel}>纪念日</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.actionCard, { backgroundColor: '#FFE0CC' }]}
-            onPress={() => navigation.navigate('AddPet')}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: COLORS.primaryDark }]}>
-              <Ionicons name="add" size={24} color={COLORS.white} />
-            </View>
-            <Text style={styles.actionLabel}>添加宠物</Text>
-          </TouchableOpacity>
+          {ACTION_CARDS.map((card) => (
+            <TouchableOpacity
+              key={card.key}
+              style={styles.actionCard}
+              onPress={() => navigation.navigate(card.screen)}
+            >
+              <View style={[styles.actionIconContainer, { backgroundColor: card.color }]}>
+                <Ionicons name={card.icon as any} size={20} color={COLORS.white} />
+              </View>
+              <Text style={styles.actionTitle}>
+                {card.key === 'dating' && t('datingAction')}
+                {card.key === 'expenses' && t('expensesAction')}
+                {card.key === 'memories' && t('memoriesAction')}
+                {card.key === 'addPet' && t('addPetAction')}
+              </Text>
+              <Text style={styles.actionSubtitle}>
+                {card.key === 'dating' && t('datingSubtitle')}
+                {card.key === 'expenses' && t('expensesSubtitle')}
+                {card.key === 'memories' && t('memoriesSubtitle')}
+                {card.key === 'addPet' && t('addPetSubtitle')}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
 
@@ -195,46 +194,45 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  welcomeCard: {
-    margin: SPACING.md,
+  welcomeSection: {
     padding: SPACING.lg,
-    borderRadius: BORDER_RADIUS.lg,
-    ...SHADOWS.md,
+    paddingTop: SPACING.md,
   },
   welcomeTitle: {
     fontSize: FONT_SIZE.xxxl,
-    fontWeight: 'bold',
-    color: COLORS.white,
-    marginBottom: SPACING.sm,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: COLORS.text,
+    letterSpacing: -0.5,
   },
   welcomeSubtitle: {
     fontSize: FONT_SIZE.md,
-    color: 'rgba(255, 255, 255, 0.9)',
-    marginBottom: SPACING.md,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.xs,
   },
-  statsContainer: {
+  statsRow: {
     flexDirection: 'row',
-    gap: SPACING.md,
-  },
-  statItem: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.md,
-    flexDirection: 'row',
-    alignItems: 'center',
+    marginTop: SPACING.lg,
     gap: SPACING.sm,
   },
-  statEmoji: {
-    fontSize: FONT_SIZE.xl,
+  statPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderRadius: BORDER_RADIUS.round,
+    gap: SPACING.xs,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   statText: {
     fontSize: FONT_SIZE.sm,
-    color: COLORS.white,
+    fontWeight: FONT_WEIGHT.medium,
+    color: COLORS.text,
   },
   section: {
-    paddingHorizontal: SPACING.md,
-    marginTop: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    marginTop: SPACING.lg,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -242,123 +240,122 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: SPACING.md,
   },
-  sectionTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-  },
   sectionTitle: {
     fontSize: FONT_SIZE.xl,
-    fontWeight: 'bold',
+    fontWeight: FONT_WEIGHT.semibold,
     color: COLORS.text,
   },
-  addButton: {
-    fontSize: FONT_SIZE.sm,
-    color: COLORS.primary,
-    fontWeight: '600',
+  addLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
   },
-  emptyContainer: {
-    backgroundColor: COLORS.white,
-    padding: SPACING.xxl,
+  addLinkText: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.medium,
+    color: COLORS.primary,
+  },
+  emptyState: {
+    backgroundColor: COLORS.surface,
+    padding: SPACING.xl,
     borderRadius: BORDER_RADIUS.lg,
     alignItems: 'center',
-    borderWidth: 2,
-    borderStyle: 'dashed',
+    borderWidth: 1,
     borderColor: COLORS.border,
+  },
+  emptyIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: BORDER_RADIUS.round,
+    backgroundColor: COLORS.divider,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.md,
   },
   emptyText: {
     fontSize: FONT_SIZE.md,
     color: COLORS.textSecondary,
-    marginVertical: SPACING.md,
+    marginBottom: SPACING.lg,
   },
-  addPetButton: {
+  primaryButton: {
     backgroundColor: COLORS.primary,
     paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.sm,
+    paddingVertical: SPACING.sm + 2,
     borderRadius: BORDER_RADIUS.md,
   },
-  addPetButtonText: {
-    color: COLORS.white,
-    fontWeight: '600',
+  primaryButtonText: {
+    color: COLORS.textInverse,
+    fontWeight: FONT_WEIGHT.medium,
+    fontSize: FONT_SIZE.sm,
   },
   petCard: {
     flexDirection: 'row',
-    backgroundColor: COLORS.white,
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
     padding: SPACING.md,
     borderRadius: BORDER_RADIUS.lg,
     marginBottom: SPACING.md,
-    ...SHADOWS.sm,
-    borderWidth: 2,
-    borderColor: 'transparent',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  petAvatarContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: BORDER_RADIUS.round,
+    overflow: 'hidden',
   },
   petAvatar: {
-    width: 80,
-    height: 80,
-    borderRadius: BORDER_RADIUS.round,
+    width: 64,
+    height: 64,
   },
   petInfo: {
     flex: 1,
     marginLeft: SPACING.md,
   },
-  petHeader: {
+  petNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
-    marginBottom: SPACING.xs,
   },
   petName: {
     fontSize: FONT_SIZE.lg,
-    fontWeight: 'bold',
+    fontWeight: FONT_WEIGHT.semibold,
     color: COLORS.text,
   },
-  petGenderIcon: {
-    fontSize: FONT_SIZE.md,
+  genderBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: BORDER_RADIUS.round,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  genderMale: {
+    backgroundColor: 'rgba(92, 122, 153, 0.15)',
+  },
+  genderFemale: {
+    backgroundColor: 'rgba(139, 58, 58, 0.15)',
   },
   petBreed: {
     fontSize: FONT_SIZE.sm,
     color: COLORS.textSecondary,
-    marginBottom: SPACING.sm,
+    marginTop: 2,
   },
-  personalityContainer: {
+  tagsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: SPACING.xs,
+    marginTop: SPACING.sm,
   },
-  personalityTag: {
-    backgroundColor: '#FFE9DC',
+  tag: {
+    backgroundColor: COLORS.divider,
     paddingHorizontal: SPACING.sm,
-    paddingVertical: SPACING.xs,
+    paddingVertical: 2,
     borderRadius: BORDER_RADIUS.sm,
   },
-  personalityText: {
+  tagText: {
     fontSize: FONT_SIZE.xs,
-    color: COLORS.primary,
-    fontWeight: '600',
-  },
-  actionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: SPACING.md,
-  },
-  actionCard: {
-    width: (width - SPACING.md * 3) / 2,
-    padding: SPACING.lg,
-    borderRadius: BORDER_RADIUS.lg,
-    alignItems: 'center',
-    ...SHADOWS.sm,
-  },
-  actionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: BORDER_RADIUS.round,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: SPACING.sm,
-  },
-  actionLabel: {
-    fontSize: FONT_SIZE.sm,
-    color: COLORS.text,
-    fontWeight: '600',
+    color: COLORS.textSecondary,
+    fontWeight: FONT_WEIGHT.medium,
   },
   showMoreButton: {
     flexDirection: 'row',
@@ -368,8 +365,39 @@ const styles = StyleSheet.create({
     gap: SPACING.xs,
   },
   showMoreText: {
+    fontSize: FONT_SIZE.sm,
+    color: COLORS.textSecondary,
+    fontWeight: FONT_WEIGHT.medium,
+  },
+  actionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.md,
+  },
+  actionCard: {
+    width: '47%',
+    backgroundColor: COLORS.surface,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  actionIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: BORDER_RADIUS.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.sm,
+  },
+  actionTitle: {
     fontSize: FONT_SIZE.md,
-    color: COLORS.primary,
-    fontWeight: '600',
+    fontWeight: FONT_WEIGHT.semibold,
+    color: COLORS.text,
+  },
+  actionSubtitle: {
+    fontSize: FONT_SIZE.xs,
+    color: COLORS.textTertiary,
+    marginTop: 2,
   },
 });

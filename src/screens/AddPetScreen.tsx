@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,12 +11,12 @@ import {
   Modal,
   Platform,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, FONT_SIZE } from '../theme';
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZE, FONT_WEIGHT } from '../theme';
 import { Pet } from '../types';
 import { addPet, updatePet } from '../utils/storage';
+import { t, addLanguageListener } from '../i18n';
 
 interface AddPetScreenProps {
   navigation: any;
@@ -31,6 +31,14 @@ interface AddPetScreenProps {
 export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
   const editPet = route?.params?.pet;
   const isEdit = route?.params?.isEdit || false;
+
+  const [, forceUpdate] = useState(0);
+
+  // Re-render when language changes
+  useEffect(() => {
+    const unsubscribe = addLanguageListener(() => forceUpdate(n => n + 1));
+    return unsubscribe;
+  }, []);
 
   const [formData, setFormData] = useState({
     name: editPet?.name || '',
@@ -68,7 +76,7 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
 
   const handleSubmit = async () => {
     if (!formData.name || !formData.breed || !formData.birthday || !formData.owner) {
-      Alert.alert('提示', '请填写必填信息');
+      Alert.alert('Info', 'Please fill required fields');
       return;
     }
 
@@ -87,10 +95,10 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
 
     if (isEdit && editPet) {
       await updatePet(petData);
-      Alert.alert('成功', `${petData.name} 更新成功！`);
+      Alert.alert('Success', `${petData.name} updated`);
     } else {
       await addPet(petData);
-      Alert.alert('成功', `${petData.name} 添加成功！`);
+      Alert.alert('Success', `${petData.name} added`);
     }
     navigation.goBack();
   };
@@ -126,29 +134,30 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
           {formData.avatar ? (
             <Image source={{ uri: formData.avatar }} style={styles.avatar} />
           ) : (
-            <Ionicons name="image-outline" size={48} color={COLORS.textLight} />
+            <Ionicons name="image-outline" size={40} color={COLORS.textTertiary} />
           )}
         </View>
-        <Text style={styles.avatarLabel}>头像链接（可选）</Text>
+        <Text style={styles.avatarLabel}>{t('avatarUrl')} ({t('leaveForDefault')})</Text>
         <TextInput
           style={styles.input}
           placeholder="https://..."
           value={formData.avatar}
           onChangeText={(text) => setFormData({ ...formData, avatar: text })}
         />
-        <Text style={styles.hint}>留空将使用默认头像</Text>
+        <Text style={styles.hint}>{t('leaveForDefault')}</Text>
       </View>
 
-      {/* Basic Info */}
+      {/* Form */}
       <View style={styles.section}>
+        {/* Name & Owner */}
         <View style={styles.row}>
           <View style={styles.halfInput}>
             <Text style={styles.label}>
-              宠物名字 <Text style={styles.required}>*</Text>
+              {t('petName')} <Text style={styles.required}>*</Text>
             </Text>
             <TextInput
               style={styles.input}
-              placeholder="例如：可乐"
+              placeholder="e.g., Max"
               value={formData.name}
               onChangeText={(text) => setFormData({ ...formData, name: text })}
             />
@@ -156,11 +165,11 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
 
           <View style={styles.halfInput}>
             <Text style={styles.label}>
-              主人姓名 <Text style={styles.required}>*</Text>
+              {t('ownerName')} <Text style={styles.required}>*</Text>
             </Text>
             <TextInput
               style={styles.input}
-              placeholder="例如：张小明"
+              placeholder="Your name"
               value={formData.owner}
               onChangeText={(text) => setFormData({ ...formData, owner: text })}
             />
@@ -169,7 +178,7 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
 
         {/* Type Selection */}
         <View style={styles.formGroup}>
-          <Text style={styles.label}>宠物类型</Text>
+          <Text style={styles.label}>{t('petType')}</Text>
           <View style={styles.typeContainer}>
             <TouchableOpacity
               style={[
@@ -178,8 +187,8 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
               ]}
               onPress={() => setFormData({ ...formData, type: 'dog' })}
             >
-              <Text style={styles.typeEmoji}>🐶</Text>
-              <Text style={styles.typeText}>狗狗</Text>
+              <Ionicons name="paw" size={24} color={formData.type === 'dog' ? COLORS.primary : COLORS.textSecondary} />
+              <Text style={[styles.typeText, formData.type === 'dog' && styles.typeTextActive]}>{t('dog')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -189,8 +198,8 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
               ]}
               onPress={() => setFormData({ ...formData, type: 'cat' })}
             >
-              <Text style={styles.typeEmoji}>🐱</Text>
-              <Text style={styles.typeText}>猫咪</Text>
+              <Ionicons name="leaf" size={24} color={formData.type === 'cat' ? COLORS.primary : COLORS.textSecondary} />
+              <Text style={[styles.typeText, formData.type === 'cat' && styles.typeTextActive]}>Cat</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -200,28 +209,28 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
               ]}
               onPress={() => setFormData({ ...formData, type: 'other' })}
             >
-              <Text style={styles.typeEmoji}>🐾</Text>
-              <Text style={styles.typeText}>其他</Text>
+              <Ionicons name="ellipsis-horizontal" size={24} color={formData.type === 'other' ? COLORS.primary : COLORS.textSecondary} />
+              <Text style={[styles.typeText, formData.type === 'other' && styles.typeTextActive]}>{t('other')}</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Breed and Gender */}
+        {/* Breed & Gender */}
         <View style={styles.row}>
           <View style={styles.halfInput}>
             <Text style={styles.label}>
-              品种 <Text style={styles.required}>*</Text>
+              {t('breed')} <Text style={styles.required}>*</Text>
             </Text>
             <TextInput
               style={styles.input}
-              placeholder="例如：金毛"
+              placeholder="e.g., Golden Retriever"
               value={formData.breed}
               onChangeText={(text) => setFormData({ ...formData, breed: text })}
             />
           </View>
 
           <View style={styles.halfInput}>
-            <Text style={styles.label}>性别</Text>
+            <Text style={styles.label}>{t('gender')}</Text>
             <View style={styles.genderContainer}>
               <TouchableOpacity
                 style={[
@@ -230,7 +239,8 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
                 ]}
                 onPress={() => setFormData({ ...formData, gender: 'male' })}
               >
-                <Text>🦁 男生</Text>
+                <Ionicons name="male" size={16} color={formData.gender === 'male' ? '#5C7A99' : COLORS.textSecondary} />
+                <Text style={[styles.genderText, formData.gender === 'male' && styles.genderTextActive]}>{t('male')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
@@ -239,23 +249,24 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
                 ]}
                 onPress={() => setFormData({ ...formData, gender: 'female' })}
               >
-                <Text>🌸 女生</Text>
+                <Ionicons name="female" size={16} color={formData.gender === 'female' ? '#8B3A3A' : COLORS.textSecondary} />
+                <Text style={[styles.genderText, formData.gender === 'female' && styles.genderTextActive]}>{t('female')}</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
 
-        {/* Birthday with Date Picker */}
+        {/* Birthday */}
         <View style={styles.formGroup}>
           <Text style={styles.label}>
-            生日 <Text style={styles.required}>*</Text>
+            {t('birthdayLabel')} <Text style={styles.required}>*</Text>
           </Text>
           <TouchableOpacity
             style={styles.dateInput}
             onPress={() => setShowDatePicker(true)}
           >
             <Text style={formData.birthday ? styles.dateText : styles.datePlaceholder}>
-              {formData.birthday || '点击选择日期'}
+              {formData.birthday || 'Tap to select'}
             </Text>
             <Ionicons name="calendar" size={20} color={COLORS.textSecondary} />
           </TouchableOpacity>
@@ -263,11 +274,11 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
 
         {/* Personality */}
         <View style={styles.formGroup}>
-          <Text style={styles.label}>性格标签</Text>
+          <Text style={styles.label}>{t('personalityTags')}</Text>
           <View style={styles.personalityInputRow}>
             <TextInput
               style={[styles.input, styles.personalityInput]}
-              placeholder="例如：活泼、友善"
+              placeholder="e.g., Friendly"
               value={personalityInput}
               onChangeText={setPersonalityInput}
             />
@@ -275,7 +286,7 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
               style={styles.addPersonalityButton}
               onPress={handleAddPersonality}
             >
-              <Text style={styles.addPersonalityButtonText}>添加</Text>
+              <Text style={styles.addPersonalityButtonText}>{t('add')}</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.personalityTags}>
@@ -283,7 +294,7 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
               <View key={index} style={styles.personalityTag}>
                 <Text style={styles.personalityTagText}>{trait}</Text>
                 <TouchableOpacity onPress={() => removePersonality(trait)}>
-                  <Ionicons name="close" size={16} color={COLORS.primary} />
+                  <Ionicons name="close" size={14} color={COLORS.textSecondary} />
                 </TouchableOpacity>
               </View>
             ))}
@@ -292,10 +303,10 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
 
         {/* Bio */}
         <View style={styles.formGroup}>
-          <Text style={styles.label}>自我介绍</Text>
+          <Text style={styles.label}>{t('aboutPet')}</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
-            placeholder="介绍一下你的宠物..."
+            placeholder="Tell us about your pet..."
             multiline
             numberOfLines={3}
             value={formData.bio}
@@ -305,10 +316,10 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
 
         {/* Looking For */}
         <View style={styles.formGroup}>
-          <Text style={styles.label}>期望对象</Text>
+          <Text style={styles.label}>{t('lookingForCompanion')}</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
-            placeholder="描述一下理想的伴侣..."
+            placeholder="Describe ideal companion..."
             multiline
             numberOfLines={2}
             value={formData.lookingFor}
@@ -322,21 +333,16 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
             style={styles.cancelButton}
             onPress={() => navigation.goBack()}
           >
-            <Text style={styles.cancelButtonText}>取消</Text>
+            <Text style={styles.cancelButtonText}>{t('cancel')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.submitButton}
             onPress={handleSubmit}
           >
-            <LinearGradient
-              colors={[COLORS.gradientStart, COLORS.gradientEnd]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.submitButtonGradient}
-            >
-              <Text style={styles.submitButtonText}>{isEdit ? '更新' : '保存'}</Text>
-            </LinearGradient>
+            <View style={styles.submitButtonInner}>
+              <Text style={styles.submitButtonText}>{isEdit ? t('edit') : t('save')}</Text>
+            </View>
           </TouchableOpacity>
         </View>
       </View>
@@ -355,17 +361,17 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
             <View style={styles.datePickerContainer}>
               <View style={styles.datePickerHeader}>
                 <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                  <Text style={styles.cancelText}>取消</Text>
+                  <Text style={styles.cancelText}>{t('cancel')}</Text>
                 </TouchableOpacity>
-                <Text style={styles.datePickerTitle}>选择生日</Text>
+                <Text style={styles.datePickerTitle}>{t('selectDate')}</Text>
                 <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                  <Text style={styles.confirmText}>确定</Text>
+                  <Text style={styles.confirmText}>{t('confirm')}</Text>
                 </TouchableOpacity>
               </View>
               <DateTimePicker
                 value={tempDate}
                 mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                display="spinner"
                 onChange={handleDateChange}
                 maximumDate={new Date()}
                 minimumDate={new Date(2000, 0, 1)}
@@ -385,20 +391,20 @@ const styles = StyleSheet.create({
   },
   avatarSection: {
     alignItems: 'center',
-    padding: SPACING.lg,
-    backgroundColor: '#FFF4E0',
-    margin: SPACING.md,
+    padding: SPACING.xl,
+    backgroundColor: COLORS.surface,
+    margin: SPACING.lg,
     borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   avatarContainer: {
-    width: 120,
-    height: 120,
+    width: 100,
+    height: 100,
     borderRadius: BORDER_RADIUS.round,
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.divider,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 4,
-    borderColor: COLORS.border,
     marginBottom: SPACING.md,
   },
   avatar: {
@@ -413,14 +419,14 @@ const styles = StyleSheet.create({
   },
   hint: {
     fontSize: FONT_SIZE.xs,
-    color: COLORS.textLight,
+    color: COLORS.textTertiary,
     marginTop: SPACING.xs,
   },
   section: {
-    padding: SPACING.md,
+    padding: SPACING.lg,
   },
   formGroup: {
-    marginBottom: SPACING.md,
+    marginBottom: SPACING.lg,
   },
   row: {
     flexDirection: 'row',
@@ -431,8 +437,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   label: {
-    fontSize: FONT_SIZE.md,
-    fontWeight: '600',
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.medium,
     color: COLORS.text,
     marginBottom: SPACING.sm,
   },
@@ -440,7 +446,7 @@ const styles = StyleSheet.create({
     color: COLORS.error,
   },
   input: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.border,
     borderRadius: BORDER_RADIUS.md,
@@ -452,7 +458,7 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   dateInput: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.border,
     borderRadius: BORDER_RADIUS.md,
@@ -467,7 +473,7 @@ const styles = StyleSheet.create({
   },
   datePlaceholder: {
     fontSize: FONT_SIZE.md,
-    color: COLORS.textLight,
+    color: COLORS.textTertiary,
   },
   typeContainer: {
     flexDirection: 'row',
@@ -475,8 +481,8 @@ const styles = StyleSheet.create({
   },
   typeButton: {
     flex: 1,
-    backgroundColor: COLORS.white,
-    borderWidth: 2,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
     borderColor: COLORS.border,
     borderRadius: BORDER_RADIUS.md,
     padding: SPACING.md,
@@ -484,15 +490,16 @@ const styles = StyleSheet.create({
   },
   typeButtonActive: {
     borderColor: COLORS.primary,
-    backgroundColor: '#FFE9DC',
-  },
-  typeEmoji: {
-    fontSize: FONT_SIZE.xxl,
-    marginBottom: SPACING.xs,
+    backgroundColor: COLORS.divider,
   },
   typeText: {
     fontSize: FONT_SIZE.sm,
-    color: COLORS.text,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.xs,
+  },
+  typeTextActive: {
+    color: COLORS.primary,
+    fontWeight: FONT_WEIGHT.medium,
   },
   genderContainer: {
     flexDirection: 'row',
@@ -500,16 +507,27 @@ const styles = StyleSheet.create({
   },
   genderButton: {
     flex: 1,
-    backgroundColor: COLORS.white,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.border,
     borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.sm,
-    alignItems: 'center',
+    padding: SPACING.md,
+    gap: SPACING.xs,
   },
   genderButtonActive: {
     borderColor: COLORS.primary,
-    backgroundColor: '#FFE9DC',
+    backgroundColor: COLORS.divider,
+  },
+  genderText: {
+    fontSize: FONT_SIZE.sm,
+    color: COLORS.textSecondary,
+  },
+  genderTextActive: {
+    color: COLORS.primary,
+    fontWeight: FONT_WEIGHT.medium,
   },
   personalityInputRow: {
     flexDirection: 'row',
@@ -519,16 +537,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   addPersonalityButton: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: COLORS.primary,
+    borderColor: COLORS.border,
     borderRadius: BORDER_RADIUS.md,
     paddingHorizontal: SPACING.md,
     justifyContent: 'center',
   },
   addPersonalityButtonText: {
-    color: COLORS.primary,
-    fontWeight: '600',
+    color: COLORS.textSecondary,
+    fontWeight: FONT_WEIGHT.medium,
   },
   personalityTags: {
     flexDirection: 'row',
@@ -539,7 +557,7 @@ const styles = StyleSheet.create({
   personalityTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFE9DC',
+    backgroundColor: COLORS.divider,
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.xs,
     borderRadius: BORDER_RADIUS.round,
@@ -547,8 +565,8 @@ const styles = StyleSheet.create({
   },
   personalityTagText: {
     fontSize: FONT_SIZE.sm,
-    color: COLORS.primary,
-    fontWeight: '600',
+    color: COLORS.text,
+    fontWeight: FONT_WEIGHT.medium,
   },
   buttonRow: {
     flexDirection: 'row',
@@ -557,7 +575,7 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     flex: 1,
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.border,
     borderRadius: BORDER_RADIUS.md,
@@ -567,22 +585,22 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: FONT_SIZE.md,
     color: COLORS.text,
-    fontWeight: '600',
+    fontWeight: FONT_WEIGHT.medium,
   },
   submitButton: {
     flex: 1,
     borderRadius: BORDER_RADIUS.md,
     overflow: 'hidden',
-    ...SHADOWS.sm,
   },
-  submitButtonGradient: {
+  submitButtonInner: {
+    backgroundColor: COLORS.primary,
     padding: SPACING.md,
     alignItems: 'center',
   },
   submitButtonText: {
     fontSize: FONT_SIZE.md,
-    fontWeight: 'bold',
-    color: COLORS.white,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: COLORS.textInverse,
   },
   modalOverlay: {
     flex: 1,
@@ -590,7 +608,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   datePickerContainer: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.surface,
     borderTopLeftRadius: BORDER_RADIUS.lg,
     borderTopRightRadius: BORDER_RADIUS.lg,
   },
@@ -603,8 +621,8 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.border,
   },
   datePickerTitle: {
-    fontSize: FONT_SIZE.lg,
-    fontWeight: '600',
+    fontSize: FONT_SIZE.md,
+    fontWeight: FONT_WEIGHT.semibold,
     color: COLORS.text,
   },
   cancelText: {
@@ -614,6 +632,6 @@ const styles = StyleSheet.create({
   confirmText: {
     fontSize: FONT_SIZE.md,
     color: COLORS.primary,
-    fontWeight: '600',
+    fontWeight: FONT_WEIGHT.semibold,
   },
 });

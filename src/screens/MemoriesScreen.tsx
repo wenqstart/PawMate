@@ -9,23 +9,30 @@ import {
   TextInput,
   Alert,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
-import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, FONT_SIZE } from '../theme';
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZE, FONT_WEIGHT } from '../theme';
 import { Pet, Anniversary } from '../types';
 import { getPets, getAnniversaries, addAnniversary, saveAnniversaries } from '../utils/storage';
 import { mockAnniversaries } from '../data/mockData';
+import { t, addLanguageListener } from '../i18n';
 
 const TYPE_LABELS: Record<string, string> = {
-  birthday: '生日',
-  adoption: '领养日',
-  custom: '自定义',
+  birthday: 'Birthday',
+  adoption: 'Adoption Day',
+  custom: 'Custom',
+};
+
+const TYPE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  birthday: 'gift',
+  adoption: 'heart',
+  custom: 'star',
 };
 
 export default function MemoriesScreen() {
   const [pets, setPets] = useState<Pet[]>([]);
   const [anniversaries, setAnniversaries] = useState<Anniversary[]>([]);
+  const [, forceUpdate] = useState(0);
   const [modalVisible, setModalVisible] = useState(false);
   const [formData, setFormData] = useState({
     petId: '',
@@ -37,6 +44,12 @@ export default function MemoriesScreen() {
 
   useEffect(() => {
     loadData();
+  }, []);
+
+  // Re-render when language changes
+  useEffect(() => {
+    const unsubscribe = addLanguageListener(() => forceUpdate(n => n + 1));
+    return unsubscribe;
   }, []);
 
   const loadData = async () => {
@@ -53,7 +66,7 @@ export default function MemoriesScreen() {
 
   const handleSubmit = async () => {
     if (!formData.petId || !formData.title || !formData.date) {
-      Alert.alert('提示', '请填写完整信息');
+      Alert.alert('Info', 'Please fill in all fields');
       return;
     }
 
@@ -68,7 +81,7 @@ export default function MemoriesScreen() {
 
     await addAnniversary(newAnniversary);
     setAnniversaries([...anniversaries, newAnniversary]);
-    Alert.alert('成功', '纪念日添加成功！');
+    Alert.alert('Success', 'Anniversary added');
     setModalVisible(false);
     resetForm();
   };
@@ -85,7 +98,7 @@ export default function MemoriesScreen() {
 
   const getPetName = (petId: string) => {
     const pet = pets.find(p => p.id === petId);
-    return pet?.name || '未知宠物';
+    return pet?.name || 'Unknown';
   };
 
   const calculateDaysUntil = (dateString: string) => {
@@ -97,19 +110,14 @@ export default function MemoriesScreen() {
     const diffTime = targetDate.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    if (diffDays === 0) return '今天';
-    if (diffDays === 1) return '明天';
-    if (diffDays < 0) return `${Math.abs(diffDays)}天前`;
-    return `还有${diffDays}天`;
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Tomorrow';
+    if (diffDays < 0) return `${Math.abs(diffDays)}d ago`;
+    return `${diffDays}d`;
   };
 
-  const getIcon = (type: string) => {
-    const icons: Record<string, keyof typeof Ionicons.glyphMap> = {
-      birthday: 'gift',
-      adoption: 'heart',
-      custom: 'star',
-    };
-    return icons[type] || 'star';
+  const getIcon = (type: string): keyof typeof Ionicons.glyphMap => {
+    return TYPE_ICONS[type as keyof typeof TYPE_ICONS] || 'star';
   };
 
   const upcomingAnniversaries = anniversaries
@@ -127,34 +135,29 @@ export default function MemoriesScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.headerTitle}>宠物纪念日</Text>
-            <Text style={styles.headerSubtitle}>记录重要的日子</Text>
+            <Text style={styles.headerTitle}>{t('memoriesAction')}</Text>
+            <Text style={styles.headerSubtitle}>{t('importantDates')}</Text>
           </View>
           <TouchableOpacity
             style={styles.addButton}
             onPress={() => setModalVisible(true)}
           >
-            <Ionicons name="add" size={24} color={COLORS.white} />
+            <Ionicons name="add" size={22} color={COLORS.textInverse} />
           </TouchableOpacity>
         </View>
 
-        {/* Upcoming Anniversaries */}
+        {/* Upcoming */}
         {upcomingAnniversaries.length > 0 && (
-          <LinearGradient
-            colors={[COLORS.gradientStart, COLORS.gradientEnd]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.upcomingCard}
-          >
+          <View style={styles.upcomingSection}>
             <View style={styles.upcomingHeader}>
-              <Ionicons name="calendar" size={20} color={COLORS.white} />
-              <Text style={styles.upcomingTitle}>即将到来的纪念日</Text>
+              <Ionicons name="calendar" size={18} color={COLORS.textInverse} />
+              <Text style={styles.upcomingTitle}>{t('comingUp')}</Text>
             </View>
             {upcomingAnniversaries.slice(0, 3).map((ann) => (
               <View key={ann.id} style={styles.upcomingItem}>
-                <View style={styles.upcomingItemLeft}>
+                <View style={styles.upcomingLeft}>
                   <View style={styles.upcomingIcon}>
-                    <Ionicons name={getIcon(ann.type)} size={20} color={COLORS.white} />
+                    <Ionicons name={getIcon(ann.type)} size={18} color={COLORS.primary} />
                   </View>
                   <View>
                     <Text style={styles.upcomingItemTitle}>{ann.title}</Text>
@@ -168,19 +171,23 @@ export default function MemoriesScreen() {
                 </View>
               </View>
             ))}
-          </LinearGradient>
+          </View>
         )}
 
-        {/* All Anniversaries by Type */}
+        {/* By Type */}
         <View style={styles.section}>
-          {Object.entries(TYPE_LABELS).map(([type, label]) => {
+          {Object.entries({
+            birthday: t('birthday'),
+            adoption: t('adoptionDay'),
+            custom: t('custom'),
+          }).map(([type, label]) => {
             const typedAnniversaries = anniversaries.filter(ann => ann.type === type);
             if (typedAnniversaries.length === 0) return null;
 
             return (
               <View key={type} style={styles.typeSection}>
                 <View style={styles.typeSectionHeader}>
-                  <Ionicons name={getIcon(type)} size={20} color={COLORS.primary} />
+                  <Ionicons name={TYPE_ICONS[type as keyof typeof TYPE_ICONS]} size={18} color={COLORS.accent} />
                   <Text style={styles.typeSectionTitle}>{label}</Text>
                 </View>
                 {typedAnniversaries
@@ -211,13 +218,15 @@ export default function MemoriesScreen() {
 
         {anniversaries.length === 0 && (
           <View style={styles.emptyContainer}>
-            <Ionicons name="calendar-outline" size={64} color={COLORS.gray} />
-            <Text style={styles.emptyText}>还没有添加纪念日</Text>
+            <View style={styles.emptyIconContainer}>
+              <Ionicons name="calendar-outline" size={40} color={COLORS.textTertiary} />
+            </View>
+            <Text style={styles.emptyText}>{t('noAnniversaries')}</Text>
             <TouchableOpacity
               style={styles.addFirstButton}
               onPress={() => setModalVisible(true)}
             >
-              <Text style={styles.addFirstButtonText}>添加第一个纪念日</Text>
+              <Text style={styles.addFirstButtonText}>{t('addAnniversary')}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -225,7 +234,7 @@ export default function MemoriesScreen() {
         <View style={{ height: SPACING.xxl }} />
       </ScrollView>
 
-      {/* Add Anniversary Modal */}
+      {/* Modal */}
       <Modal
         visible={modalVisible}
         animationType="slide"
@@ -235,21 +244,21 @@ export default function MemoriesScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>添加纪念日</Text>
+              <Text style={styles.modalTitle}>{t('addAnniversary')}</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={24} color={COLORS.text} />
+                <Ionicons name="close" size={22} color={COLORS.text} />
               </TouchableOpacity>
             </View>
 
             <ScrollView>
               <View style={styles.formGroup}>
-                <Text style={styles.label}>选择宠物</Text>
+                <Text style={styles.label}>{t('pet')}</Text>
                 <View style={styles.pickerContainer}>
                   <Picker
                     selectedValue={formData.petId}
                     onValueChange={(value) => setFormData({ ...formData, petId: value })}
                   >
-                    <Picker.Item label="选择宠物" value="" />
+                    <Picker.Item label={t('selectPet')} value="" />
                     {pets.map((pet) => (
                       <Picker.Item key={pet.id} label={pet.name} value={pet.id} />
                     ))}
@@ -258,7 +267,7 @@ export default function MemoriesScreen() {
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.label}>类型</Text>
+                <Text style={styles.label}>{t('type')}</Text>
                 <View style={styles.pickerContainer}>
                   <Picker
                     selectedValue={formData.type}
@@ -266,25 +275,25 @@ export default function MemoriesScreen() {
                       setFormData({ ...formData, type: value })
                     }
                   >
-                    {Object.entries(TYPE_LABELS).map(([key, label]) => (
-                      <Picker.Item key={key} label={label} value={key} />
-                    ))}
+                    <Picker.Item key="birthday" label={t('birthday')} value="birthday" />
+                    <Picker.Item key="adoption" label={t('adoptionDay')} value="adoption" />
+                    <Picker.Item key="custom" label={t('custom')} value="custom" />
                   </Picker>
                 </View>
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.label}>标题</Text>
+                <Text style={styles.label}>{t('title')}</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="例如：可乐的生日"
+                  placeholder={t('title')}
                   value={formData.title}
                   onChangeText={(text) => setFormData({ ...formData, title: text })}
                 />
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.label}>日期</Text>
+                <Text style={styles.label}>{t('date')}</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="YYYY-MM-DD"
@@ -294,10 +303,10 @@ export default function MemoriesScreen() {
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.label}>备注</Text>
+                <Text style={styles.label}>{t('notes')}</Text>
                 <TextInput
                   style={[styles.input, styles.textArea]}
-                  placeholder="添加一些备注..."
+                  placeholder={t('notes')}
                   multiline
                   numberOfLines={3}
                   value={formData.notes}
@@ -306,7 +315,7 @@ export default function MemoriesScreen() {
               </View>
 
               <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-                <Text style={styles.submitButtonText}>保存</Text>
+                <Text style={styles.submitButtonText}>{t('save')}</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>
@@ -325,32 +334,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    padding: SPACING.md,
+    padding: SPACING.lg,
   },
   headerTitle: {
     fontSize: FONT_SIZE.xxl,
-    fontWeight: 'bold',
+    fontWeight: FONT_WEIGHT.semibold,
     color: COLORS.text,
   },
   headerSubtitle: {
-    fontSize: FONT_SIZE.md,
+    fontSize: FONT_SIZE.sm,
     color: COLORS.textSecondary,
     marginTop: SPACING.xs,
   },
   addButton: {
-    backgroundColor: COLORS.primary,
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 44,
     borderRadius: BORDER_RADIUS.round,
+    backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    ...SHADOWS.md,
   },
-  upcomingCard: {
-    margin: SPACING.md,
+  upcomingSection: {
+    margin: SPACING.lg,
+    marginTop: 0,
     padding: SPACING.lg,
+    backgroundColor: COLORS.primary,
     borderRadius: BORDER_RADIUS.lg,
-    ...SHADOWS.md,
   },
   upcomingHeader: {
     flexDirection: 'row',
@@ -359,59 +368,59 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   upcomingTitle: {
-    fontSize: FONT_SIZE.lg,
-    fontWeight: 'bold',
-    color: COLORS.white,
+    fontSize: FONT_SIZE.md,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: COLORS.textInverse,
   },
   upcomingItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     padding: SPACING.md,
     borderRadius: BORDER_RADIUS.md,
     marginBottom: SPACING.sm,
   },
-  upcomingItemLeft: {
+  upcomingLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.md,
     flex: 1,
   },
   upcomingIcon: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     borderRadius: BORDER_RADIUS.round,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   upcomingItemTitle: {
     fontSize: FONT_SIZE.md,
-    fontWeight: '600',
-    color: COLORS.white,
+    fontWeight: FONT_WEIGHT.medium,
+    color: COLORS.textInverse,
   },
   upcomingItemSubtitle: {
     fontSize: FONT_SIZE.sm,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: 'rgba(255, 255, 255, 0.7)',
     marginTop: 2,
   },
   daysBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.xs,
     borderRadius: BORDER_RADIUS.md,
   },
   daysBadgeText: {
     fontSize: FONT_SIZE.xs,
-    fontWeight: '600',
-    color: COLORS.white,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: COLORS.textInverse,
   },
   section: {
-    padding: SPACING.md,
+    padding: SPACING.lg,
   },
   typeSection: {
-    marginBottom: SPACING.lg,
+    marginBottom: SPACING.xl,
   },
   typeSectionHeader: {
     flexDirection: 'row',
@@ -421,17 +430,16 @@ const styles = StyleSheet.create({
   },
   typeSectionTitle: {
     fontSize: FONT_SIZE.lg,
-    fontWeight: 'bold',
+    fontWeight: FONT_WEIGHT.semibold,
     color: COLORS.text,
   },
   anniversaryCard: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.surface,
     padding: SPACING.md,
     borderRadius: BORDER_RADIUS.md,
     marginBottom: SPACING.sm,
     borderWidth: 1,
     borderColor: COLORS.border,
-    ...SHADOWS.sm,
   },
   anniversaryHeader: {
     flexDirection: 'row',
@@ -441,17 +449,15 @@ const styles = StyleSheet.create({
   },
   anniversaryTitle: {
     fontSize: FONT_SIZE.md,
-    fontWeight: '600',
+    fontWeight: FONT_WEIGHT.medium,
     color: COLORS.text,
     flex: 1,
   },
   daysTag: {
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.divider,
     paddingHorizontal: SPACING.sm,
-    paddingVertical: SPACING.xs,
+    paddingVertical: 2,
     borderRadius: BORDER_RADIUS.sm,
-    borderWidth: 1,
-    borderColor: COLORS.border,
   },
   daysTagText: {
     fontSize: FONT_SIZE.xs,
@@ -464,19 +470,19 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
   },
   petTag: {
-    backgroundColor: '#FFE9DC',
+    backgroundColor: COLORS.divider,
     paddingHorizontal: SPACING.sm,
     paddingVertical: 2,
     borderRadius: BORDER_RADIUS.sm,
   },
   petTagText: {
     fontSize: FONT_SIZE.xs,
-    color: COLORS.primary,
-    fontWeight: '600',
+    color: COLORS.textSecondary,
+    fontWeight: FONT_WEIGHT.medium,
   },
   anniversaryDate: {
     fontSize: FONT_SIZE.sm,
-    color: COLORS.textSecondary,
+    color: COLORS.textTertiary,
   },
   anniversaryNotes: {
     fontSize: FONT_SIZE.sm,
@@ -484,19 +490,27 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   emptyContainer: {
-    backgroundColor: COLORS.white,
-    margin: SPACING.md,
-    padding: SPACING.xxl,
+    backgroundColor: COLORS.surface,
+    margin: SPACING.lg,
+    padding: SPACING.xl,
     borderRadius: BORDER_RADIUS.lg,
     alignItems: 'center',
-    borderWidth: 2,
-    borderStyle: 'dashed',
+    borderWidth: 1,
     borderColor: COLORS.border,
+  },
+  emptyIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: BORDER_RADIUS.round,
+    backgroundColor: COLORS.divider,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.md,
   },
   emptyText: {
     fontSize: FONT_SIZE.md,
     color: COLORS.textSecondary,
-    marginVertical: SPACING.md,
+    marginBottom: SPACING.lg,
   },
   addFirstButton: {
     backgroundColor: COLORS.primary,
@@ -505,8 +519,8 @@ const styles = StyleSheet.create({
     borderRadius: BORDER_RADIUS.md,
   },
   addFirstButtonText: {
-    color: COLORS.white,
-    fontWeight: '600',
+    color: COLORS.textInverse,
+    fontWeight: FONT_WEIGHT.medium,
   },
   modalOverlay: {
     flex: 1,
@@ -514,7 +528,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.surface,
     borderTopLeftRadius: BORDER_RADIUS.xl,
     borderTopRightRadius: BORDER_RADIUS.xl,
     padding: SPACING.lg,
@@ -528,15 +542,15 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: FONT_SIZE.xl,
-    fontWeight: 'bold',
+    fontWeight: FONT_WEIGHT.semibold,
     color: COLORS.text,
   },
   formGroup: {
     marginBottom: SPACING.md,
   },
   label: {
-    fontSize: FONT_SIZE.md,
-    fontWeight: '600',
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.medium,
     color: COLORS.text,
     marginBottom: SPACING.sm,
   },
@@ -565,11 +579,10 @@ const styles = StyleSheet.create({
     borderRadius: BORDER_RADIUS.md,
     alignItems: 'center',
     marginTop: SPACING.md,
-    ...SHADOWS.sm,
   },
   submitButtonText: {
     fontSize: FONT_SIZE.md,
-    fontWeight: 'bold',
-    color: COLORS.white,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: COLORS.textInverse,
   },
 });

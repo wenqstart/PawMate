@@ -4,10 +4,9 @@
     "slug": "pet-dating-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "icon": "./assets/icon.png",
     "splash": {
-      "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#FFF9F5"
     },
@@ -19,14 +18,14 @@
       "bundleIdentifier": "com.petdating.app"
     },
     "android": {
+      "package": "com.petdating.app",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#FF8C42"
-      },
-      "package": "com.petdating.app"
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#FFF9F5"
+      }
     },
     "web": {
-      "favicon": "./assets/favicon.jpg"
+      "favicon": "./src/assets/favicon.jpg"
     }
   }
 }

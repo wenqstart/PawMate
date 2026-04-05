@@ -2,12 +2,13 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../theme';
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZE, FONT_WEIGHT } from '../theme';
+import { t, addLanguageListener } from '../i18n';
+import { useState, useEffect } from 'react';
 
 interface CommunityPost {
   id: string;
   user: string;
-  avatar: string;
   petType: string;
   content: string;
   likes: number;
@@ -18,62 +19,65 @@ interface CommunityPost {
 const mockPosts: CommunityPost[] = [
   {
     id: '1',
-    user: '铲屎官小李',
-    avatar: '🐱',
-    petType: '英短',
-    content: '今天带我家毛孩子去做绝育手术，终于完成了喵生大事！',
+    user: 'PetLover_XiaoLi',
+    petType: 'British Shorthair',
+    content: 'Just completed neutering surgery for my cat! Finally done.',
     likes: 28,
     comments: 12,
-    time: '2小时前'
+    time: '2h ago'
   },
   {
     id: '2',
-    user: '旺财妈',
-    avatar: '🐕',
-    petType: '柯基',
-    content: '谁家的柯基走丢了？在小区门口捡到的，已经送到派出所了',
+    user: 'CorgiMom',
+    petType: 'Corgi',
+    content: 'Found a lost dog near the community entrance, already took to the police station',
     likes: 56,
     comments: 34,
-    time: '3小时前'
+    time: '3h ago'
   },
   {
     id: '3',
-    user: '兔兔饲养员',
-    avatar: '🐰',
-    petType: '垂耳兔',
-    content: '兔兔第一次尝试吃草莓，反应也太可爱了吧！',
+    user: 'BunnyKeeper',
+    petType: 'Holland Lop',
+    content: 'First time trying strawberry, reaction is too cute!',
     likes: 89,
     comments: 23,
-    time: '5小时前'
+    time: '5h ago'
   },
   {
     id: '4',
-    user: '布偶猫奴',
-    avatar: '🐱',
-    petType: '布偶',
-    content: '新买的猫爬架到了逆子表示非常满意！',
+    user: 'RagdollFan',
+    petType: 'Ragdoll',
+    content: 'New cat tree arrived and the little one loves it!',
     likes: 102,
     comments: 45,
-    time: '昨天'
+    time: 'Yesterday'
   },
   {
     id: '5',
-    user: '哈士奇拆家队',
-    avatar: '🐕',
-    petType: '哈士奇',
-    content: '下班回家看到这一幕血压直接拉满...',
+    user: 'HuskyTeam',
+    petType: 'Husky',
+    content: 'Came home to this mess... blood pressure rising',
     likes: 234,
     comments: 89,
-    time: '昨天'
+    time: 'Yesterday'
   }
 ];
 
 export default function CommunityScreen({ navigation }: any) {
+  const [, forceUpdate] = useState(0);
+
+  // Re-render when language changes
+  useEffect(() => {
+    const unsubscribe = addLanguageListener(() => forceUpdate(n => n + 1));
+    return unsubscribe;
+  }, []);
+
   const renderPost = (post: CommunityPost) => (
     <TouchableOpacity key={post.id} style={styles.postCard} activeOpacity={0.7}>
       <View style={styles.postHeader}>
         <View style={styles.avatarContainer}>
-          <Text style={styles.avatar}>{post.avatar}</Text>
+          <Ionicons name="paw" size={20} color={COLORS.textTertiary} />
         </View>
         <View style={styles.postInfo}>
           <View style={styles.userRow}>
@@ -88,15 +92,15 @@ export default function CommunityScreen({ navigation }: any) {
       <Text style={styles.postContent}>{post.content}</Text>
       <View style={styles.postActions}>
         <TouchableOpacity style={styles.actionButton}>
-          <Ionicons name="heart-outline" size={20} color={COLORS.textSecondary} />
+          <Ionicons name="heart-outline" size={18} color={COLORS.textSecondary} />
           <Text style={styles.actionText}>{post.likes}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.actionButton}>
-          <Ionicons name="chatbubble-outline" size={20} color={COLORS.textSecondary} />
+          <Ionicons name="chatbubble-outline" size={18} color={COLORS.textSecondary} />
           <Text style={styles.actionText}>{post.comments}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.actionButton}>
-          <Ionicons name="share-outline" size={20} color={COLORS.textSecondary} />
+          <Ionicons name="share-outline" size={18} color={COLORS.textSecondary} />
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -105,29 +109,31 @@ export default function CommunityScreen({ navigation }: any) {
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* 热门话题标签 */}
-        <View style={styles.topicContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <TouchableOpacity style={styles.topicTag}>
-              <Text style={styles.topicText}># 猫咪日常</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.topicTag}>
-              <Text style={styles.topicText}># 狗狗趣事</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.topicTag}>
-              <Text style={styles.topicText}># 宠物用品</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.topicTag}>
-              <Text style={styles.topicText}># 领养救助</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.topicTag}>
-              <Text style={styles.topicText}># 养宠经验</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
+        {/* Topics */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.topicsContainer}
+        >
+          <TouchableOpacity style={styles.topicTag}>
+            <Text style={styles.topicText}>{t('cats')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.topicTag}>
+            <Text style={styles.topicText}>{t('dogs')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.topicTag}>
+            <Text style={styles.topicText}>{t('products')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.topicTag}>
+            <Text style={styles.topicText}>{t('adoption')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.topicTag}>
+            <Text style={styles.topicText}>{t('tips')}</Text>
+          </TouchableOpacity>
+        </ScrollView>
 
-        {/* 帖子列表 */}
-        <View style={styles.postList}>
+        {/* Posts */}
+        <View style={styles.postsContainer}>
           {mockPosts.map(renderPost)}
         </View>
       </ScrollView>
@@ -140,52 +146,49 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  topicContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#fff',
+  topicsContainer: {
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    gap: SPACING.sm,
   },
   topicTag: {
-    backgroundColor: COLORS.primary + '15',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 10,
+    backgroundColor: COLORS.divider,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderRadius: BORDER_RADIUS.round,
+    marginRight: SPACING.sm,
   },
   topicText: {
-    color: COLORS.primary,
-    fontSize: 14,
-    fontWeight: '500',
+    color: COLORS.textSecondary,
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.medium,
   },
-  postList: {
-    padding: 16,
+  postsContainer: {
+    padding: SPACING.lg,
   },
   postCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.lg,
+    marginBottom: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   postHeader: {
     flexDirection: 'row',
-    marginBottom: 12,
+    marginBottom: SPACING.md,
   },
   avatarContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: COLORS.background,
+    width: 40,
+    height: 40,
+    borderRadius: BORDER_RADIUS.round,
+    backgroundColor: COLORS.divider,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
-  },
-  avatar: {
-    fontSize: 24,
+    marginRight: SPACING.md,
   },
   postInfo: {
     flex: 1,
@@ -197,46 +200,46 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   userName: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: FONT_SIZE.md,
+    fontWeight: FONT_WEIGHT.semibold,
     color: COLORS.text,
-    marginRight: 8,
+    marginRight: SPACING.sm,
   },
   petTypeBadge: {
-    backgroundColor: COLORS.primary + '20',
-    paddingHorizontal: 8,
+    backgroundColor: COLORS.divider,
+    paddingHorizontal: SPACING.sm,
     paddingVertical: 2,
-    borderRadius: 10,
+    borderRadius: BORDER_RADIUS.sm,
   },
   petTypeText: {
-    fontSize: 12,
-    color: COLORS.primary,
-    fontWeight: '500',
+    fontSize: FONT_SIZE.xs,
+    color: COLORS.textSecondary,
+    fontWeight: FONT_WEIGHT.medium,
   },
   postTime: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
+    fontSize: FONT_SIZE.xs,
+    color: COLORS.textTertiary,
   },
   postContent: {
-    fontSize: 15,
+    fontSize: FONT_SIZE.md,
     color: COLORS.text,
     lineHeight: 22,
-    marginBottom: 14,
+    marginBottom: SPACING.md,
   },
   postActions: {
     flexDirection: 'row',
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
-    paddingTop: 12,
+    paddingTop: SPACING.md,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 24,
+    marginRight: SPACING.lg,
   },
   actionText: {
-    marginLeft: 6,
-    fontSize: 14,
+    marginLeft: SPACING.xs,
+    fontSize: FONT_SIZE.sm,
     color: COLORS.textSecondary,
   },
 });

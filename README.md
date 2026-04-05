@@ -259,7 +259,57 @@ expo install @expo/vector-icons
 
 ## 🚀 构建发布
 
-### iOS构建
+### 环境配置
+
+首次打包前需要配置 Android SDK 路径：
+
+```bash
+# Windows (PowerShell)
+$env:ANDROID_HOME = "C:\Users\你的用户名\AppData\Local\Android\Sdk"
+
+# 或者创建 local.properties 文件
+echo "sdk.dir=C\:\\Users\\你的用户名\\AppData\\Local\\Android\\Sdk" > android/local.properties
+```
+
+### 一键打包 APK（推荐）
+
+在项目根目录下执行，一次性生成 APK 到当前目录：
+
+```bash
+npx expo prebuild --platform android --clean && cd android && ./gradlew assembleRelease && cp app/build/outputs/apk/release/app-release.apk ../PawMate-release.apk
+```
+
+### 手动分步打包
+
+```bash
+# 1. 生成原生项目
+npx expo prebuild --platform android --clean
+
+# 2. 进入 Android 目录
+cd android
+
+# 3. 打包 Release APK
+./gradlew assembleRelease
+
+# 4. 复制 APK 到项目根目录
+cp app/build/outputs/apk/release/app-release.apk ../PawMate-release.apk
+```
+
+### 常用 Gradle 命令
+
+```bash
+cd android
+./gradlew assembleRelease    # Release 版
+./gradlew assembleDebug      # Debug 版
+./gradlew clean              # 清理缓存
+```
+
+### APK 输出位置
+
+- Release: `android/app/build/outputs/apk/release/app-release.apk`
+- Debug: `android/app/build/outputs/apk/debug/app-debug.apk`
+
+### iOS 构建
 ```bash
 expo build:ios
 ```

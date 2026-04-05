@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,26 +9,24 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, FONT_SIZE } from '../theme';
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZE, FONT_WEIGHT } from '../theme';
 import { Pet, MatchRequest } from '../types';
 import { mockDatingPets } from '../data/mockData';
-import { getPets, addMatchRequest, isPetsMatched, getMatches } from '../utils/storage';
+import { getPets, addMatchRequest, isPetsMatched } from '../utils/storage';
+import { t, addLanguageListener } from '../i18n';
 import PhotoCarousel from '../components/PhotoCarousel';
 import LikeModal from '../components/LikeModal';
 
 const { width, height } = Dimensions.get('window');
-const CARD_WIDTH = width - SPACING.md * 2;
 
-// 打招呼消息模板
 const GREETING_MESSAGES = [
-  '你好呀！想认识一下',
-  '我家{petName}想和你们家{petName}交个朋友',
-  '看起来很有缘分哦～',
-  '我家宝贝很喜欢你家的宝贝～',
-  '可以认识一下吗？',
+  'Hello! Want to connect?',
+  'My pet would love to meet yours',
+  'Seems like a great match',
+  'Your pet is adorable',
+  'Would love to connect',
 ];
 
 export default function DatingScreen({ navigation }: any) {
@@ -38,6 +36,13 @@ export default function DatingScreen({ navigation }: any) {
   const [animation] = useState(new Animated.Value(0));
   const [showLikeModal, setShowLikeModal] = useState(false);
   const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
+  const [, forceUpdate] = useState(0);
+
+  // Re-render when language changes
+  useEffect(() => {
+    const unsubscribe = addLanguageListener(() => forceUpdate(n => n + 1));
+    return unsubscribe;
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -46,16 +51,13 @@ export default function DatingScreen({ navigation }: any) {
   );
 
   const loadData = async () => {
-    // 加载相亲宠物列表
     let pets = mockDatingPets;
-    // 为每只宠物添加默认照片（如果没有 photos 字段）
     pets = pets.map(p => ({
       ...p,
       photos: p.photos || [p.avatar],
     }));
     setDatingPets(pets);
 
-    // 加载我的宠物
     const myPetsData = await getPets();
     setMyPets(myPetsData);
   };
@@ -65,20 +67,17 @@ export default function DatingScreen({ navigation }: any) {
   const handleLike = () => {
     if (!currentPet) return;
 
-    // 如果没有宠物，提示添加
     if (myPets.length === 0) {
-      Alert.alert('提示', '还没有添加宠物，请先添加宠物后再发起相亲', [
-        { text: '去添加', onPress: () => navigation.navigate('AddPet') },
-        { text: '取消', style: 'cancel' },
+      Alert.alert('Info', 'Please add a pet first', [
+        { text: 'Add Pet', onPress: () => navigation.navigate('AddPet') },
+        { text: 'Cancel', style: 'cancel' },
       ]);
       return;
     }
 
-    // 如果只有一只宠物，直接发起配对
     if (myPets.length === 1) {
       handleSendLike(myPets[0], GREETING_MESSAGES[0]);
     } else {
-      // 多只宠物，弹出选择面板
       setSelectedPet(currentPet);
       setShowLikeModal(true);
     }
@@ -87,14 +86,12 @@ export default function DatingScreen({ navigation }: any) {
   const handleSendLike = async (sourcePet: Pet, message: string) => {
     if (!currentPet) return;
 
-    // 检查是否已经匹配过
     const alreadyMatched = await isPetsMatched(sourcePet.id, currentPet.id);
     if (alreadyMatched) {
-      Alert.alert('提示', '你们已经匹配过了！');
+      Alert.alert('Info', 'Already matched!');
       return;
     }
 
-    // 创建配对请求
     const matchRequest: MatchRequest = {
       id: Date.now().toString(),
       targetPet: currentPet,
@@ -106,7 +103,7 @@ export default function DatingScreen({ navigation }: any) {
 
     await addMatchRequest(matchRequest);
 
-    Alert.alert('❤️', `已向 ${currentPet.name} 的主人发送喜欢！\n等待对方回应`);
+    Alert.alert('Sent', `Like sent to ${currentPet.name}'s owner`);
     nextPet();
     setShowLikeModal(false);
   };
@@ -131,7 +128,7 @@ export default function DatingScreen({ navigation }: any) {
       if (currentIndex < datingPets.length - 1) {
         setCurrentIndex(currentIndex + 1);
       } else {
-        Alert.alert('😊', '已经看完所有宠物啦！\n稍后会有更多宠物');
+        Alert.alert('Done', 'You\'ve seen all pets');
       }
     });
   };
@@ -140,7 +137,7 @@ export default function DatingScreen({ navigation }: any) {
     const birth = new Date(birthday);
     const today = new Date();
     const years = today.getFullYear() - birth.getFullYear();
-    return `${years}岁`;
+    return `${years}y`;
   };
 
   const cardTranslateX = animation.interpolate({
@@ -156,14 +153,15 @@ export default function DatingScreen({ navigation }: any) {
   if (!currentPet) {
     return (
       <View style={styles.emptyContainer}>
-        <Ionicons name="heart-outline" size={64} color={COLORS.gray} />
-        <Text style={styles.emptyTitle}>暂时没有更多宠物了</Text>
-        <Text style={styles.emptySubtitle}>稍后再来看看吧～</Text>
+        <View style={styles.emptyIconContainer}>
+          <Ionicons name="heart-outline" size={40} color={COLORS.textTertiary} />
+        </View>
+        <Text style={styles.emptyTitle}>{t('noMorePets')}</Text>
+        <Text style={styles.emptySubtitle}>{t('checkLater')}</Text>
       </View>
     );
   }
 
-  // 使用宠物照片或默认头像数组
   const photos = currentPet.photos && currentPet.photos.length > 0
     ? currentPet.photos
     : [currentPet.avatar];
@@ -172,8 +170,8 @@ export default function DatingScreen({ navigation }: any) {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>宠物相亲</Text>
-        <Text style={styles.headerSubtitle}>为你的宠物找到合适的伴侣</Text>
+        <Text style={styles.headerTitle}>{t('datingAction')}</Text>
+        <Text style={styles.headerSubtitle}>{t('findCompanion')}</Text>
       </View>
 
       {/* Dating Card */}
@@ -192,45 +190,43 @@ export default function DatingScreen({ navigation }: any) {
           ]}
         >
           <View style={styles.card}>
-            {/* 照片轮播 */}
             <PhotoCarousel photos={photos} style={styles.carousel} />
 
-            {/* Counter Badge */}
             <View style={styles.counterBadge}>
               <Text style={styles.counterText}>
                 {currentIndex + 1} / {datingPets.length}
               </Text>
             </View>
 
-            {/* Gradient Overlay with Info */}
-            <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.8)']}
-              style={styles.gradientOverlay}
-            >
-              <View style={styles.petInfoOverlay}>
-                <View style={styles.nameContainer}>
-                  <Text style={styles.petNameLarge}>{currentPet.name}</Text>
-                  <Text style={styles.genderEmoji}>
-                    {currentPet.gender === 'male' ? '🦁' : '🌸'}
-                  </Text>
-                </View>
-                <Text style={styles.petDetails}>
-                  {currentPet.breed} · {calculateAge(currentPet.birthday)}
-                </Text>
-                <View style={styles.ownerInfo}>
-                  <Ionicons name="person" size={14} color="rgba(255,255,255,0.8)" />
-                  <Text style={styles.ownerText}>主人: {currentPet.owner}</Text>
+            <View style={styles.infoOverlay}>
+              <View style={styles.nameRow}>
+                <Text style={styles.petNameLarge}>{currentPet.name}</Text>
+                <View style={[
+                  styles.genderBadge,
+                  currentPet.gender === 'male' ? styles.genderMale : styles.genderFemale
+                ]}>
+                  <Ionicons
+                    name={currentPet.gender === 'male' ? 'male' : 'female'}
+                    size={14}
+                    color={currentPet.gender === 'male' ? '#5C7A99' : '#8B3A3A'}
+                  />
                 </View>
               </View>
-            </LinearGradient>
+              <Text style={styles.petDetails}>
+                {currentPet.breed} · {calculateAge(currentPet.birthday)}
+              </Text>
+              <View style={styles.ownerRow}>
+                <Ionicons name="person-outline" size={14} color="rgba(255,255,255,0.7)" />
+                <Text style={styles.ownerText}>{t('owner')}: {currentPet.owner}</Text>
+              </View>
+            </View>
           </View>
 
-          {/* Details Section */}
+          {/* Details */}
           <View style={styles.detailsSection}>
-            {/* Personality Tags */}
             <View style={styles.detailBlock}>
-              <Text style={styles.detailLabel}>性格标签</Text>
-              <View style={styles.tagsContainer}>
+              <Text style={styles.detailLabel}>{t('personality')}</Text>
+              <View style={styles.tagsRow}>
                 {currentPet.personality.map((trait, index) => (
                   <View key={index} style={styles.tag}>
                     <Text style={styles.tagText}>{trait}</Text>
@@ -239,17 +235,15 @@ export default function DatingScreen({ navigation }: any) {
               </View>
             </View>
 
-            {/* Bio */}
             <View style={styles.detailBlock}>
-              <Text style={styles.detailLabel}>自我介绍</Text>
+              <Text style={styles.detailLabel}>{t('about')}</Text>
               <Text style={styles.bioText}>{currentPet.bio}</Text>
             </View>
 
-            {/* Looking For */}
-            <View style={styles.lookingForCard}>
+            <View style={styles.lookingForBlock}>
               <View style={styles.lookingForHeader}>
-                <Ionicons name="heart" size={16} color={COLORS.primary} />
-                <Text style={styles.lookingForLabel}>期望对象</Text>
+                <Ionicons name="heart" size={16} color={COLORS.accent} />
+                <Text style={styles.lookingForLabel}>{t('lookingFor')}</Text>
               </View>
               <Text style={styles.lookingForText}>{currentPet.lookingFor}</Text>
             </View>
@@ -260,33 +254,28 @@ export default function DatingScreen({ navigation }: any) {
       {/* Action Buttons */}
       <View style={styles.actionsContainer}>
         <TouchableOpacity style={styles.passButton} onPress={handlePass}>
-          <Ionicons name="close" size={32} color={COLORS.textSecondary} />
+          <Ionicons name="close" size={28} color={COLORS.textSecondary} />
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.likeButton} onPress={handleLike}>
-          <LinearGradient
-            colors={[COLORS.gradientStart, COLORS.gradientEnd]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.likeButtonGradient}
-          >
-            <Ionicons name="heart" size={36} color={COLORS.white} />
-          </LinearGradient>
+          <View style={styles.likeButtonInner}>
+            <Ionicons name="heart" size={32} color={COLORS.textInverse} />
+          </View>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.infoButton}>
-          <Ionicons name="information-circle" size={32} color={COLORS.info} />
+          <Ionicons name="information-circle" size={28} color={COLORS.info} />
         </TouchableOpacity>
       </View>
 
       {/* Tips */}
-      <View style={styles.tipsCard}>
+      <View style={styles.tipsContainer}>
+        <Ionicons name="bulb-outline" size={14} color={COLORS.textTertiary} />
         <Text style={styles.tipsText}>
-          💡 点击 ❤️ 表示喜欢，点击 ✖️ 查看下一个
+          {t('tapHeartToLike')}
         </Text>
       </View>
 
-      {/* Like Modal */}
       <LikeModal
         visible={showLikeModal}
         targetPet={selectedPet}
@@ -308,13 +297,13 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: FONT_SIZE.xxl,
-    fontWeight: 'bold',
+    fontWeight: FONT_WEIGHT.semibold,
     color: COLORS.text,
-    marginBottom: SPACING.xs,
   },
   headerSubtitle: {
-    fontSize: FONT_SIZE.md,
+    fontSize: FONT_SIZE.sm,
     color: COLORS.textSecondary,
+    marginTop: SPACING.xs,
   },
   cardScroll: {
     flex: 1,
@@ -323,14 +312,13 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.md,
   },
   cardContainer: {
-    paddingHorizontal: SPACING.md,
+    paddingHorizontal: SPACING.lg,
   },
   card: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.surface,
     borderRadius: BORDER_RADIUS.xl,
     overflow: 'hidden',
-    ...SHADOWS.lg,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: COLORS.border,
   },
   carousel: {
@@ -340,91 +328,101 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: SPACING.md,
     right: SPACING.md,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.xs,
     borderRadius: BORDER_RADIUS.round,
   },
   counterText: {
     fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.medium,
     color: COLORS.text,
-    fontWeight: '600',
   },
-  gradientOverlay: {
+  infoOverlay: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    paddingTop: SPACING.xxl,
+    paddingTop: SPACING.xl,
     paddingBottom: SPACING.lg,
     paddingHorizontal: SPACING.lg,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
   },
-  petInfoOverlay: {
-    gap: SPACING.xs,
-  },
-  nameContainer: {
+  nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
   },
   petNameLarge: {
     fontSize: FONT_SIZE.xxxl,
-    fontWeight: 'bold',
-    color: COLORS.white,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: COLORS.textInverse,
   },
-  genderEmoji: {
-    fontSize: FONT_SIZE.xxl,
+  genderBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: BORDER_RADIUS.round,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  genderMale: {
+    backgroundColor: 'rgba(92, 122, 153, 0.3)',
+  },
+  genderFemale: {
+    backgroundColor: 'rgba(139, 58, 58, 0.3)',
   },
   petDetails: {
     fontSize: FONT_SIZE.md,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: 'rgba(255, 255, 255, 0.85)',
+    marginTop: SPACING.xs,
   },
-  ownerInfo: {
+  ownerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.xs,
+    marginTop: SPACING.xs,
   },
   ownerText: {
     fontSize: FONT_SIZE.sm,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: 'rgba(255, 255, 255, 0.7)',
   },
   detailsSection: {
     padding: SPACING.lg,
-    gap: SPACING.md,
+    gap: SPACING.lg,
   },
   detailBlock: {
     gap: SPACING.sm,
   },
   detailLabel: {
     fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.medium,
     color: COLORS.textSecondary,
-    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  tagsContainer: {
+  tagsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: SPACING.sm,
   },
   tag: {
-    backgroundColor: '#FFE9DC',
+    backgroundColor: COLORS.divider,
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.xs,
     borderRadius: BORDER_RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
   },
   tagText: {
     fontSize: FONT_SIZE.sm,
-    color: COLORS.primary,
-    fontWeight: '600',
+    fontWeight: FONT_WEIGHT.medium,
+    color: COLORS.text,
   },
   bioText: {
     fontSize: FONT_SIZE.md,
     color: COLORS.text,
-    lineHeight: FONT_SIZE.md * 1.5,
+    lineHeight: 22,
   },
-  lookingForCard: {
-    backgroundColor: '#FFF4E0',
+  lookingForBlock: {
+    backgroundColor: COLORS.divider,
     padding: SPACING.md,
     borderRadius: BORDER_RADIUS.md,
     gap: SPACING.sm,
@@ -436,67 +434,62 @@ const styles = StyleSheet.create({
   },
   lookingForLabel: {
     fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.medium,
     color: COLORS.text,
-    fontWeight: '600',
   },
   lookingForText: {
     fontSize: FONT_SIZE.sm,
-    color: COLORS.text,
+    color: COLORS.textSecondary,
   },
   actionsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: SPACING.lg,
+    gap: SPACING.xl,
     paddingVertical: SPACING.lg,
   },
   passButton: {
-    width: 64,
-    height: 64,
+    width: 56,
+    height: 56,
     borderRadius: BORDER_RADIUS.round,
-    backgroundColor: COLORS.white,
-    borderWidth: 2,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
     borderColor: COLORS.border,
     alignItems: 'center',
     justifyContent: 'center',
-    ...SHADOWS.sm,
   },
   likeButton: {
-    width: 80,
-    height: 80,
+    width: 72,
+    height: 72,
   },
-  likeButtonGradient: {
+  likeButtonInner: {
     width: '100%',
     height: '100%',
     borderRadius: BORDER_RADIUS.round,
+    backgroundColor: COLORS.accent,
     alignItems: 'center',
     justifyContent: 'center',
-    ...SHADOWS.md,
   },
   infoButton: {
-    width: 64,
-    height: 64,
+    width: 56,
+    height: 56,
     borderRadius: BORDER_RADIUS.round,
-    backgroundColor: COLORS.white,
-    borderWidth: 2,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
     borderColor: COLORS.border,
     alignItems: 'center',
     justifyContent: 'center',
-    ...SHADOWS.sm,
   },
-  tipsCard: {
-    marginHorizontal: SPACING.md,
+  tipsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: SPACING.xs,
     marginBottom: SPACING.md,
-    backgroundColor: '#FFF4E0',
-    padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
   },
   tipsText: {
-    fontSize: FONT_SIZE.sm,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
+    fontSize: FONT_SIZE.xs,
+    color: COLORS.textTertiary,
   },
   emptyContainer: {
     flex: 1,
@@ -505,15 +498,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: SPACING.xxl,
   },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: BORDER_RADIUS.round,
+    backgroundColor: COLORS.divider,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.lg,
+  },
   emptyTitle: {
     fontSize: FONT_SIZE.lg,
+    fontWeight: FONT_WEIGHT.medium,
     color: COLORS.textSecondary,
-    fontWeight: '600',
-    marginTop: SPACING.md,
   },
   emptySubtitle: {
     fontSize: FONT_SIZE.sm,
-    color: COLORS.textLight,
+    color: COLORS.textTertiary,
     marginTop: SPACING.xs,
   },
 });
