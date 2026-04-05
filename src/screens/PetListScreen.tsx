@@ -6,15 +6,20 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZE, FONT_WEIGHT } from '../theme';
-import { Pet } from '../types';
-import { getPets } from '../utils/storage';
+import { Pet } from '../firebase/auth';
+import { getUserPets } from '../firebase/auth';
 import { t, addLanguageListener } from '../i18n';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function PetListScreen({ navigation }: any) {
+  const { user } = useAuth();
   const [pets, setPets] = useState<Pet[]>([]);
+  const [loading, setLoading] = useState(false);
   const [, forceUpdate] = useState(0);
 
   // Re-render when language changes
@@ -24,15 +29,25 @@ export default function PetListScreen({ navigation }: any) {
   }, []);
 
   const loadPets = useCallback(async () => {
-    const storedPets = await getPets();
-    setPets(storedPets);
-  }, []);
+    if (!user) return;
+    setLoading(true);
+    try {
+      const storedPets = await getUserPets(user.uid);
+      setPets(storedPets);
+    } catch (error) {
+      console.error('Error loading pets:', error);
+    }
+    setLoading(false);
+  }, [user]);
 
-  React.useEffect(() => {
-    loadPets();
-  }, [loadPets]);
+  useFocusEffect(
+    useCallback(() => {
+      loadPets();
+    }, [loadPets])
+  );
 
   const getPetAge = (birthday: string) => {
+    if (!birthday) return '0y';
     const birth = new Date(birthday);
     const now = new Date();
     const years = now.getFullYear() - birth.getFullYear();
@@ -43,8 +58,24 @@ export default function PetListScreen({ navigation }: any) {
     return `${years}y ${months > 0 ? months : 0}m`;
   };
 
+  if (!user) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>{t('login')}</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl refreshing={loading} onRefresh={loadPets} />
+      }
+    >
       <View style={styles.header}>
         <Text style={styles.headerTitle}>{t('myPets')}</Text>
         <Text style={styles.headerSubtitle}>{pets.length} {t('pets')}</Text>
@@ -67,12 +98,12 @@ export default function PetListScreen({ navigation }: any) {
             <TouchableOpacity
               key={pet.id}
               style={styles.petCard}
-              onPress={() => navigation.navigate('PetDetail', { petId: pet.id })}
+              onPress={() => navigation.navigate('PetDetail', { petId: pet.id, pet })}
               activeOpacity={0.7}
             >
               <View style={styles.petImageContainer}>
-                {pet.avatar ? (
-                  <Image source={{ uri: pet.avatar }} style={styles.petImage} />
+                {pet.photos && pet.photos.length > 0 ? (
+                  <Image source={{ uri: pet.photos[0] }} style={styles.petImage} />
                 ) : (
                   <View style={styles.petImagePlaceholder}>
                     <Ionicons name="paw" size={30} color={COLORS.textTertiary} />

@@ -8,14 +8,15 @@ import {
   Animated,
   Alert,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZE, FONT_WEIGHT } from '../theme';
-import { Pet, MatchRequest } from '../types';
-import { mockDatingPets } from '../data/mockData';
-import { getPets, addMatchRequest, isPetsMatched } from '../utils/storage';
+import { Pet } from '../firebase/auth';
+import { getAllPets, getUserPets, likePet } from '../firebase/auth';
 import { t, addLanguageListener } from '../i18n';
+import { useAuth } from '../contexts/AuthContext';
 import PhotoCarousel from '../components/PhotoCarousel';
 import LikeModal from '../components/LikeModal';
 
@@ -30,12 +31,14 @@ const GREETING_MESSAGES = [
 ];
 
 export default function DatingScreen({ navigation }: any) {
+  const { user } = useAuth();
   const [datingPets, setDatingPets] = useState<Pet[]>([]);
   const [myPets, setMyPets] = useState<Pet[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [animation] = useState(new Animated.Value(0));
   const [showLikeModal, setShowLikeModal] = useState(false);
   const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
+  const [loading, setLoading] = useState(false);
   const [, forceUpdate] = useState(0);
 
   // Re-render when language changes
@@ -46,31 +49,38 @@ export default function DatingScreen({ navigation }: any) {
 
   useFocusEffect(
     useCallback(() => {
-      loadData();
-    }, [])
+      if (user) {
+        loadData();
+      }
+    }, [user])
   );
 
   const loadData = async () => {
-    let pets = mockDatingPets;
-    pets = pets.map(p => ({
-      ...p,
-      photos: p.photos || [p.avatar],
-    }));
-    setDatingPets(pets);
+    if (!user) return;
+    setLoading(true);
+    try {
+      // Get current user's pets
+      const pets = await getUserPets(user.uid);
+      setMyPets(pets);
 
-    const myPetsData = await getPets();
-    setMyPets(myPetsData);
+      // Get all pets from other users for browsing
+      const allPets = await getAllPets(user.uid);
+      setDatingPets(allPets);
+    } catch (error) {
+      console.error('Error loading data:', error);
+    }
+    setLoading(false);
   };
 
   const currentPet = datingPets[currentIndex];
 
   const handleLike = () => {
-    if (!currentPet) return;
+    if (!currentPet || !user) return;
 
     if (myPets.length === 0) {
-      Alert.alert('Info', 'Please add a pet first', [
-        { text: 'Add Pet', onPress: () => navigation.navigate('AddPet') },
-        { text: 'Cancel', style: 'cancel' },
+      Alert.alert(t('info') || 'Info', t('pleaseAddPetFirst'), [
+        { text: t('addPet'), onPress: () => navigation.navigate('AddPet') },
+        { text: t('cancel'), style: 'cancel' },
       ]);
       return;
     }
@@ -84,27 +94,25 @@ export default function DatingScreen({ navigation }: any) {
   };
 
   const handleSendLike = async (sourcePet: Pet, message: string) => {
-    if (!currentPet) return;
+    if (!currentPet || !user) return;
 
-    const alreadyMatched = await isPetsMatched(sourcePet.id, currentPet.id);
-    if (alreadyMatched) {
-      Alert.alert('Info', 'Already matched!');
-      return;
+    setLoading(true);
+    try {
+      const result = await likePet(user.uid, sourcePet.id, currentPet.id, message);
+
+      if (result.matched) {
+        Alert.alert(t('success') || 'Success', `You matched with ${currentPet.name}!`, [
+          { text: t('continueText'), onPress: () => {} }
+        ]);
+      } else {
+        Alert.alert(t('likeSent') || 'Like sent', `Like sent to ${currentPet.name}'s owner`);
+      }
+      nextPet();
+    } catch (error) {
+      console.error('Error sending like:', error);
+      Alert.alert(t('error') || 'Error', 'Failed to send like');
     }
-
-    const matchRequest: MatchRequest = {
-      id: Date.now().toString(),
-      targetPet: currentPet,
-      sourcePet: sourcePet,
-      sourceMessage: message,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-    };
-
-    await addMatchRequest(matchRequest);
-
-    Alert.alert('Sent', `Like sent to ${currentPet.name}'s owner`);
-    nextPet();
+    setLoading(false);
     setShowLikeModal(false);
   };
 
@@ -128,7 +136,7 @@ export default function DatingScreen({ navigation }: any) {
       if (currentIndex < datingPets.length - 1) {
         setCurrentIndex(currentIndex + 1);
       } else {
-        Alert.alert('Done', 'You\'ve seen all pets');
+        Alert.alert(t('noMorePets') || 'Done', t('checkLater') || 'Check back later');
       }
     });
   };
@@ -149,6 +157,23 @@ export default function DatingScreen({ navigation }: any) {
     inputRange: [0, 1],
     outputRange: [1, 0],
   });
+
+  if (!user) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Ionicons name="heart-outline" size={60} color={COLORS.textTertiary} />
+        <Text style={styles.emptyTitle}>{t('login') || 'Please login first'}</Text>
+      </View>
+    );
+  }
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
 
   if (!currentPet) {
     return (
@@ -217,7 +242,7 @@ export default function DatingScreen({ navigation }: any) {
               </Text>
               <View style={styles.ownerRow}>
                 <Ionicons name="person-outline" size={14} color="rgba(255,255,255,0.7)" />
-                <Text style={styles.ownerText}>{t('owner')}: {currentPet.owner}</Text>
+                <Text style={styles.ownerText}>{t('owner')}: {currentPet.ownerName || 'Unknown'}</Text>
               </View>
             </View>
           </View>
@@ -227,7 +252,7 @@ export default function DatingScreen({ navigation }: any) {
             <View style={styles.detailBlock}>
               <Text style={styles.detailLabel}>{t('personality')}</Text>
               <View style={styles.tagsRow}>
-                {currentPet.personality.map((trait, index) => (
+                {(currentPet.personality || []).map((trait, index) => (
                   <View key={index} style={styles.tag}>
                     <Text style={styles.tagText}>{trait}</Text>
                   </View>
@@ -237,16 +262,18 @@ export default function DatingScreen({ navigation }: any) {
 
             <View style={styles.detailBlock}>
               <Text style={styles.detailLabel}>{t('about')}</Text>
-              <Text style={styles.bioText}>{currentPet.bio}</Text>
+              <Text style={styles.bioText}>{currentPet.bio || ''}</Text>
             </View>
 
-            <View style={styles.lookingForBlock}>
-              <View style={styles.lookingForHeader}>
-                <Ionicons name="heart" size={16} color={COLORS.accent} />
-                <Text style={styles.lookingForLabel}>{t('lookingFor')}</Text>
+            {currentPet.lookingFor && (
+              <View style={styles.lookingForBlock}>
+                <View style={styles.lookingForHeader}>
+                  <Ionicons name="heart" size={16} color={COLORS.accent} />
+                  <Text style={styles.lookingForLabel}>{t('lookingFor')}</Text>
+                </View>
+                <Text style={styles.lookingForText}>{currentPet.lookingFor}</Text>
               </View>
-              <Text style={styles.lookingForText}>{currentPet.lookingFor}</Text>
-            </View>
+            )}
           </View>
         </Animated.View>
       </ScrollView>
@@ -279,6 +306,7 @@ export default function DatingScreen({ navigation }: any) {
       <LikeModal
         visible={showLikeModal}
         targetPet={selectedPet}
+        myPets={myPets}
         onClose={() => setShowLikeModal(false)}
         onConfirm={handleSendLike}
       />
@@ -289,6 +317,12 @@ export default function DatingScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: COLORS.background,
   },
   header: {

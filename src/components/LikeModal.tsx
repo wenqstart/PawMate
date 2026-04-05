@@ -12,8 +12,8 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, FONT_SIZE } from '../theme';
-import { Pet } from '../types';
-import { getPets } from '../utils/storage';
+import { Pet } from '../firebase/auth';
+import { getUserPets } from '../firebase/auth';
 
 // 预设打招呼消息
 const GREETING_MESSAGES = [
@@ -27,6 +27,7 @@ const GREETING_MESSAGES = [
 interface LikeModalProps {
   visible: boolean;
   targetPet: Pet | null;
+  myPets: Pet[];
   onClose: () => void;
   onConfirm: (sourcePet: Pet, message: string) => void;
 }
@@ -34,6 +35,7 @@ interface LikeModalProps {
 export default function LikeModal({
   visible,
   targetPet,
+  myPets: propMyPets,
   onClose,
   onConfirm,
 }: LikeModalProps) {
@@ -43,19 +45,12 @@ export default function LikeModal({
   const [customMessage, setCustomMessage] = useState('');
 
   useEffect(() => {
-    if (visible) {
-      loadMyPets();
-    }
-  }, [visible]);
-
-  const loadMyPets = async () => {
-    const pets = await getPets();
-    setMyPets(pets);
-    if (pets.length > 0) {
-      setSelectedPet(pets[0]);
+    if (visible && propMyPets.length > 0) {
+      setMyPets(propMyPets);
+      setSelectedPet(propMyPets[0]);
       setSelectedMessage(GREETING_MESSAGES[0]);
     }
-  };
+  }, [visible, propMyPets]);
 
   const getFormattedMessage = (template: string) => {
     if (!selectedPet) return template;

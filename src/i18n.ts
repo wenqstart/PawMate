@@ -13,6 +13,7 @@ export interface Translations {
   confirm: string;
   success: string;
   error: string;
+  info: string;
   loading: string;
 
   // Navigation
@@ -128,6 +129,32 @@ export interface Translations {
   alreadyMatched: string;
   pleaseAddPetFirst: string;
   likeSent: string;
+
+  // Auth
+  login: string;
+  register: string;
+  phoneNumber: string;
+  verifyCode: string;
+  sendCode: string;
+  resendCode: string;
+  enterPhone: string;
+  enterCode: string;
+  nickname: string;
+  completeProfile: string;
+  loginSuccess: string;
+  loginFailed: string;
+  continueText: string;
+  logout: string;
+  profile: string;
+  editProfile: string;
+
+  // Matches & Chat
+  matches: string;
+  chat: string;
+  noMatches: string;
+  startChat: string;
+  typeMessage: string;
+  send: string;
 }
 
 const en: Translations = {
@@ -139,6 +166,7 @@ const en: Translations = {
   confirm: 'Confirm',
   success: 'Success',
   error: 'Error',
+  info: 'Info',
   loading: 'Loading...',
 
   home: 'Home',
@@ -244,6 +272,32 @@ const en: Translations = {
   alreadyMatched: 'Already matched!',
   pleaseAddPetFirst: 'Please add a pet first',
   likeSent: 'Like sent',
+
+  // Auth
+  login: 'Login',
+  register: 'Register',
+  phoneNumber: 'Phone Number',
+  verifyCode: 'Verification Code',
+  sendCode: 'Send Code',
+  resendCode: 'Resend',
+  enterPhone: 'Enter phone number',
+  enterCode: 'Enter verification code',
+  nickname: 'Nickname',
+  completeProfile: 'Complete Profile',
+  loginSuccess: 'Login successful',
+  loginFailed: 'Login failed',
+  continueText: 'Continue',
+  logout: 'Logout',
+  profile: 'Profile',
+  editProfile: 'Edit Profile',
+
+  // Matches & Chat
+  matches: 'Matches',
+  chat: 'Chat',
+  noMatches: 'No matches yet',
+  startChat: 'Start chatting',
+  typeMessage: 'Type a message...',
+  send: 'Send',
 };
 
 const zh: Translations = {
@@ -255,6 +309,7 @@ const zh: Translations = {
   confirm: '确认',
   success: '成功',
   error: '错误',
+  info: '提示',
   loading: '加载中...',
 
   home: '首页',
@@ -360,6 +415,32 @@ const zh: Translations = {
   alreadyMatched: '已经匹配过了',
   pleaseAddPetFirst: '请先添加宠物',
   likeSent: '喜欢已发送',
+
+  // Auth
+  login: '登录',
+  register: '注册',
+  phoneNumber: '手机号',
+  verifyCode: '验证码',
+  sendCode: '发送验证码',
+  resendCode: '重新发送',
+  enterPhone: '请输入手机号',
+  enterCode: '请输入验证码',
+  nickname: '昵称',
+  completeProfile: '完善资料',
+  loginSuccess: '登录成功',
+  loginFailed: '登录失败',
+  continueText: '继续',
+  logout: '退出登录',
+  profile: '个人资料',
+  editProfile: '编辑资料',
+
+  // Matches & Chat
+  matches: '匹配',
+  chat: '聊天',
+  noMatches: '还没有匹配',
+  startChat: '开始聊天',
+  typeMessage: '输入消息...',
+  send: '发送',
 };
 
 const translations: Record<Language, Translations> = { en, zh };

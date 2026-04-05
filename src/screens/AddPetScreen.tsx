@@ -10,13 +10,15 @@ import {
   Alert,
   Modal,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZE, FONT_WEIGHT } from '../theme';
-import { Pet } from '../types';
-import { addPet, updatePet } from '../utils/storage';
+import { Pet } from '../firebase/auth';
+import { addPet, updatePet } from '../firebase/auth';
 import { t, addLanguageListener } from '../i18n';
+import { useAuth } from '../contexts/AuthContext';
 
 interface AddPetScreenProps {
   navigation: any;
@@ -29,8 +31,10 @@ interface AddPetScreenProps {
 }
 
 export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
+  const { user, userProfile } = useAuth();
   const editPet = route?.params?.pet;
   const isEdit = route?.params?.isEdit || false;
+  const [loading, setLoading] = useState(false);
 
   const [, forceUpdate] = useState(0);
 
@@ -42,13 +46,12 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
 
   const [formData, setFormData] = useState({
     name: editPet?.name || '',
-    type: editPet?.type || 'dog' as Pet['type'],
+    type: editPet?.type || 'dog' as 'dog' | 'cat' | 'other',
     breed: editPet?.breed || '',
-    gender: editPet?.gender || 'male' as Pet['gender'],
+    gender: editPet?.gender || 'male' as 'male' | 'female',
     birthday: editPet?.birthday || '',
-    avatar: editPet?.avatar || '',
+    photos: editPet?.photos || [] as string[],
     personality: editPet?.personality || [] as string[],
-    owner: editPet?.owner || '',
     bio: editPet?.bio || '',
     lookingFor: editPet?.lookingFor || '',
   });
@@ -58,328 +61,233 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
   const [tempDate, setTempDate] = useState(editPet?.birthday ? new Date(editPet.birthday) : new Date());
 
   const formatDate = (date: Date): string => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    return date.toISOString().split('T')[0];
   };
 
   const handleDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
-    if (Platform.OS === 'android') {
-      setShowDatePicker(false);
-    }
+    setShowDatePicker(Platform.OS === 'ios');
     if (selectedDate) {
       setTempDate(selectedDate);
       setFormData({ ...formData, birthday: formatDate(selectedDate) });
     }
   };
 
-  const handleSubmit = async () => {
-    if (!formData.name || !formData.breed || !formData.birthday || !formData.owner) {
-      Alert.alert('Info', 'Please fill required fields');
-      return;
-    }
-
-    const defaultAvatars = {
-      dog: 'https://images.unsplash.com/photo-1747045170511-9f0f4f3859e8?w=400',
-      cat: 'https://images.unsplash.com/photo-1702914954859-f037fc75b760?w=400',
-      other: 'https://images.unsplash.com/photo-1747045170511-9f0f4f3859e8?w=400',
-    };
-
-    const petData: Pet = {
-      id: editPet?.id || Date.now().toString(),
-      ...formData,
-      age: calculateAge(formData.birthday),
-      avatar: formData.avatar || defaultAvatars[formData.type],
-    };
-
-    if (isEdit && editPet) {
-      await updatePet(petData);
-      Alert.alert('Success', `${petData.name} updated`);
-    } else {
-      await addPet(petData);
-      Alert.alert('Success', `${petData.name} added`);
-    }
-    navigation.goBack();
-  };
-
-  const calculateAge = (birthday: string) => {
-    const birth = new Date(birthday);
-    const today = new Date();
-    return today.getFullYear() - birth.getFullYear();
-  };
-
-  const handleAddPersonality = () => {
-    if (personalityInput && !formData.personality.includes(personalityInput)) {
+  const addPersonalityTag = () => {
+    if (personalityInput.trim() && formData.personality.length < 5) {
       setFormData({
         ...formData,
-        personality: [...formData.personality, personalityInput],
+        personality: [...formData.personality, personalityInput.trim()],
       });
       setPersonalityInput('');
     }
   };
 
-  const removePersonality = (trait: string) => {
-    setFormData({
-      ...formData,
-      personality: formData.personality.filter(p => p !== trait),
-    });
+  const removePersonalityTag = (index: number) => {
+    const newTags = [...formData.personality];
+    newTags.splice(index, 1);
+    setFormData({ ...formData, personality: newTags });
+  };
+
+  const handleSave = async () => {
+    if (!formData.name.trim()) {
+      Alert.alert(t('error') || 'Error', t('petName') + ' ' + (t('required') || 'required'));
+      return;
+    }
+    if (!formData.breed.trim()) {
+      Alert.alert(t('error') || 'Error', t('breed') + ' ' + (t('required') || 'required'));
+      return;
+    }
+    if (!formData.birthday) {
+      Alert.alert(t('error') || 'Error', t('birthdayLabel') + ' ' + (t('required') || 'required'));
+      return;
+    }
+    if (!user) {
+      Alert.alert(t('error') || 'Error', t('login') + ' ' + (t('required') || 'required'));
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const petData = {
+        name: formData.name.trim(),
+        type: formData.type,
+        breed: formData.breed.trim(),
+        gender: formData.gender,
+        birthday: formData.birthday,
+        photos: formData.photos.length > 0 ? formData.photos : ['https://images.unsplash.com/photo-1637852422069-81efc85e0a79?w=400'],
+        personality: formData.personality,
+        bio: formData.bio.trim(),
+        lookingFor: formData.lookingFor.trim(),
+        ownerId: user.uid,
+        ownerName: userProfile?.nickname || user.phoneNumber || 'Unknown',
+      };
+
+      if (isEdit && editPet?.id) {
+        await updatePet(user.uid, editPet.id, petData);
+      } else {
+        await addPet(petData);
+      }
+
+      Alert.alert(t('success') || 'Success', isEdit ? 'Pet updated!' : 'Pet added!', [
+        { text: 'OK', onPress: () => navigation.goBack() }
+      ]);
+    } catch (error) {
+      console.error('Error saving pet:', error);
+      Alert.alert(t('error') || 'Error', 'Failed to save pet');
+    }
+    setLoading(false);
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Avatar Section */}
-      <View style={styles.avatarSection}>
-        <View style={styles.avatarContainer}>
-          {formData.avatar ? (
-            <Image source={{ uri: formData.avatar }} style={styles.avatar} />
-          ) : (
-            <Ionicons name="image-outline" size={40} color={COLORS.textTertiary} />
-          )}
-        </View>
-        <Text style={styles.avatarLabel}>{t('avatarUrl')} ({t('leaveForDefault')})</Text>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      {/* Name */}
+      <View style={styles.field}>
+        <Text style={styles.label}>{t('petName')}<Text style={styles.required}>*</Text></Text>
         <TextInput
           style={styles.input}
-          placeholder="https://..."
-          value={formData.avatar}
-          onChangeText={(text) => setFormData({ ...formData, avatar: text })}
+          value={formData.name}
+          onChangeText={(text) => setFormData({ ...formData, name: text })}
+          placeholder={t('petName')}
         />
-        <Text style={styles.hint}>{t('leaveForDefault')}</Text>
       </View>
 
-      {/* Form */}
-      <View style={styles.section}>
-        {/* Name & Owner */}
-        <View style={styles.row}>
-          <View style={styles.halfInput}>
-            <Text style={styles.label}>
-              {t('petName')} <Text style={styles.required}>*</Text>
-            </Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g., Max"
-              value={formData.name}
-              onChangeText={(text) => setFormData({ ...formData, name: text })}
-            />
-          </View>
-
-          <View style={styles.halfInput}>
-            <Text style={styles.label}>
-              {t('ownerName')} <Text style={styles.required}>*</Text>
-            </Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Your name"
-              value={formData.owner}
-              onChangeText={(text) => setFormData({ ...formData, owner: text })}
-            />
-          </View>
-        </View>
-
-        {/* Type Selection */}
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>{t('petType')}</Text>
-          <View style={styles.typeContainer}>
+      {/* Type */}
+      <View style={styles.field}>
+        <Text style={styles.label}>{t('petType')}</Text>
+        <View style={styles.typeSelector}>
+          {(['dog', 'cat', 'other'] as const).map((type) => (
             <TouchableOpacity
-              style={[
-                styles.typeButton,
-                formData.type === 'dog' && styles.typeButtonActive,
-              ]}
-              onPress={() => setFormData({ ...formData, type: 'dog' })}
+              key={type}
+              style={[styles.typeButton, formData.type === type && styles.typeButtonActive]}
+              onPress={() => setFormData({ ...formData, type })}
             >
-              <Ionicons name="paw" size={24} color={formData.type === 'dog' ? COLORS.primary : COLORS.textSecondary} />
-              <Text style={[styles.typeText, formData.type === 'dog' && styles.typeTextActive]}>{t('dog')}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.typeButton,
-                formData.type === 'cat' && styles.typeButtonActive,
-              ]}
-              onPress={() => setFormData({ ...formData, type: 'cat' })}
-            >
-              <Ionicons name="leaf" size={24} color={formData.type === 'cat' ? COLORS.primary : COLORS.textSecondary} />
-              <Text style={[styles.typeText, formData.type === 'cat' && styles.typeTextActive]}>Cat</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.typeButton,
-                formData.type === 'other' && styles.typeButtonActive,
-              ]}
-              onPress={() => setFormData({ ...formData, type: 'other' })}
-            >
-              <Ionicons name="ellipsis-horizontal" size={24} color={formData.type === 'other' ? COLORS.primary : COLORS.textSecondary} />
-              <Text style={[styles.typeText, formData.type === 'other' && styles.typeTextActive]}>{t('other')}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Breed & Gender */}
-        <View style={styles.row}>
-          <View style={styles.halfInput}>
-            <Text style={styles.label}>
-              {t('breed')} <Text style={styles.required}>*</Text>
-            </Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g., Golden Retriever"
-              value={formData.breed}
-              onChangeText={(text) => setFormData({ ...formData, breed: text })}
-            />
-          </View>
-
-          <View style={styles.halfInput}>
-            <Text style={styles.label}>{t('gender')}</Text>
-            <View style={styles.genderContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.genderButton,
-                  formData.gender === 'male' && styles.genderButtonActive,
-                ]}
-                onPress={() => setFormData({ ...formData, gender: 'male' })}
-              >
-                <Ionicons name="male" size={16} color={formData.gender === 'male' ? '#5C7A99' : COLORS.textSecondary} />
-                <Text style={[styles.genderText, formData.gender === 'male' && styles.genderTextActive]}>{t('male')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.genderButton,
-                  formData.gender === 'female' && styles.genderButtonActive,
-                ]}
-                onPress={() => setFormData({ ...formData, gender: 'female' })}
-              >
-                <Ionicons name="female" size={16} color={formData.gender === 'female' ? '#8B3A3A' : COLORS.textSecondary} />
-                <Text style={[styles.genderText, formData.gender === 'female' && styles.genderTextActive]}>{t('female')}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-
-        {/* Birthday */}
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>
-            {t('birthdayLabel')} <Text style={styles.required}>*</Text>
-          </Text>
-          <TouchableOpacity
-            style={styles.dateInput}
-            onPress={() => setShowDatePicker(true)}
-          >
-            <Text style={formData.birthday ? styles.dateText : styles.datePlaceholder}>
-              {formData.birthday || 'Tap to select'}
-            </Text>
-            <Ionicons name="calendar" size={20} color={COLORS.textSecondary} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Personality */}
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>{t('personalityTags')}</Text>
-          <View style={styles.personalityInputRow}>
-            <TextInput
-              style={[styles.input, styles.personalityInput]}
-              placeholder="e.g., Friendly"
-              value={personalityInput}
-              onChangeText={setPersonalityInput}
-            />
-            <TouchableOpacity
-              style={styles.addPersonalityButton}
-              onPress={handleAddPersonality}
-            >
-              <Text style={styles.addPersonalityButtonText}>{t('add')}</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.personalityTags}>
-            {formData.personality.map((trait, index) => (
-              <View key={index} style={styles.personalityTag}>
-                <Text style={styles.personalityTagText}>{trait}</Text>
-                <TouchableOpacity onPress={() => removePersonality(trait)}>
-                  <Ionicons name="close" size={14} color={COLORS.textSecondary} />
-                </TouchableOpacity>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* Bio */}
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>{t('aboutPet')}</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="Tell us about your pet..."
-            multiline
-            numberOfLines={3}
-            value={formData.bio}
-            onChangeText={(text) => setFormData({ ...formData, bio: text })}
-          />
-        </View>
-
-        {/* Looking For */}
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>{t('lookingForCompanion')}</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="Describe ideal companion..."
-            multiline
-            numberOfLines={2}
-            value={formData.lookingFor}
-            onChangeText={(text) => setFormData({ ...formData, lookingFor: text })}
-          />
-        </View>
-
-        {/* Submit Buttons */}
-        <View style={styles.buttonRow}>
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.cancelButtonText}>{t('cancel')}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.submitButton}
-            onPress={handleSubmit}
-          >
-            <View style={styles.submitButtonInner}>
-              <Text style={styles.submitButtonText}>{isEdit ? t('edit') : t('save')}</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={{ height: SPACING.xxl }} />
-
-      {/* Date Picker Modal */}
-      {showDatePicker && (
-        <Modal
-          transparent
-          animationType="slide"
-          visible={showDatePicker}
-          onRequestClose={() => setShowDatePicker(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.datePickerContainer}>
-              <View style={styles.datePickerHeader}>
-                <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                  <Text style={styles.cancelText}>{t('cancel')}</Text>
-                </TouchableOpacity>
-                <Text style={styles.datePickerTitle}>{t('selectDate')}</Text>
-                <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                  <Text style={styles.confirmText}>{t('confirm')}</Text>
-                </TouchableOpacity>
-              </View>
-              <DateTimePicker
-                value={tempDate}
-                mode="date"
-                display="spinner"
-                onChange={handleDateChange}
-                maximumDate={new Date()}
-                minimumDate={new Date(2000, 0, 1)}
+              <Ionicons
+                name={type === 'dog' ? 'paw' : type === 'cat' ? 'paw' : 'help-circle'}
+                size={24}
+                color={formData.type === type ? COLORS.textInverse : COLORS.textSecondary}
               />
-            </View>
-          </View>
-        </Modal>
+              <Text style={[styles.typeText, formData.type === type && styles.typeTextActive]}>
+                {t(type)}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      {/* Breed */}
+      <View style={styles.field}>
+        <Text style={styles.label}>{t('breed')}<Text style={styles.required}>*</Text></Text>
+        <TextInput
+          style={styles.input}
+          value={formData.breed}
+          onChangeText={(text) => setFormData({ ...formData, breed: text })}
+          placeholder={t('breed')}
+        />
+      </View>
+
+      {/* Gender */}
+      <View style={styles.field}>
+        <Text style={styles.label}>{t('gender')}</Text>
+        <View style={styles.genderSelector}>
+          <TouchableOpacity
+            style={[styles.genderButton, formData.gender === 'male' && styles.genderButtonActive]}
+            onPress={() => setFormData({ ...formData, gender: 'male' })}
+          >
+            <Ionicons name="male" size={20} color={formData.gender === 'male' ? COLORS.textInverse : COLORS.textSecondary} />
+            <Text style={[styles.genderText, formData.gender === 'male' && styles.genderTextActive]}>{t('male')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.genderButton, formData.gender === 'female' && styles.genderButtonActive]}
+            onPress={() => setFormData({ ...formData, gender: 'female' })}
+          >
+            <Ionicons name="female" size={20} color={formData.gender === 'female' ? COLORS.textInverse : COLORS.textSecondary} />
+            <Text style={[styles.genderText, formData.gender === 'female' && styles.genderTextActive]}>{t('female')}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Birthday */}
+      <View style={styles.field}>
+        <Text style={styles.label}>{t('birthdayLabel')}<Text style={styles.required}>*</Text></Text>
+        <TouchableOpacity style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
+          <Ionicons name="calendar-outline" size={20} color={COLORS.textSecondary} />
+          <Text style={styles.dateText}>{formData.birthday || t('selectDate')}</Text>
+        </TouchableOpacity>
+      </View>
+
+      {showDatePicker && (
+        <DateTimePicker
+          value={tempDate}
+          mode="date"
+          display="default"
+          onChange={handleDateChange}
+          maximumDate={new Date()}
+        />
       )}
+
+      {/* Personality */}
+      <View style={styles.field}>
+        <Text style={styles.label}>{t('personalityTags')}</Text>
+        <View style={styles.personalityInput}>
+          <TextInput
+            style={styles.personalityTextInput}
+            value={personalityInput}
+            onChangeText={setPersonalityInput}
+            placeholder={t('personality')}
+            onSubmitEditing={addPersonalityTag}
+          />
+          <TouchableOpacity style={styles.addTagButton} onPress={addPersonalityTag}>
+            <Ionicons name="add" size={24} color={COLORS.textInverse} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.tagsContainer}>
+          {formData.personality.map((tag, index) => (
+            <TouchableOpacity key={index} style={styles.tag} onPress={() => removePersonalityTag(index)}>
+              <Text style={styles.tagText}>{tag}</Text>
+              <Ionicons name="close-circle" size={16} color={COLORS.textSecondary} />
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      {/* Bio */}
+      <View style={styles.field}>
+        <Text style={styles.label}>{t('aboutPet')}</Text>
+        <TextInput
+          style={[styles.input, styles.textArea]}
+          value={formData.bio}
+          onChangeText={(text) => setFormData({ ...formData, bio: text })}
+          placeholder={t('aboutPet')}
+          multiline
+          numberOfLines={4}
+        />
+      </View>
+
+      {/* Looking For */}
+      <View style={styles.field}>
+        <Text style={styles.label}>{t('lookingForCompanion')}</Text>
+        <TextInput
+          style={[styles.input, styles.textArea]}
+          value={formData.lookingFor}
+          onChangeText={(text) => setFormData({ ...formData, lookingFor: text })}
+          placeholder={t('lookingForCompanion')}
+          multiline
+          numberOfLines={2}
+        />
+      </View>
+
+      {/* Save Button */}
+      <TouchableOpacity
+        style={[styles.saveButton, loading && styles.saveButtonDisabled]}
+        onPress={handleSave}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color={COLORS.textInverse} />
+        ) : (
+          <Text style={styles.saveButtonText}>{t('save')}</Text>
+        )}
+      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -389,119 +297,62 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  avatarSection: {
-    alignItems: 'center',
-    padding: SPACING.xl,
-    backgroundColor: COLORS.surface,
-    margin: SPACING.lg,
-    borderRadius: BORDER_RADIUS.lg,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  avatarContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: BORDER_RADIUS.round,
-    backgroundColor: COLORS.divider,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: SPACING.md,
-  },
-  avatar: {
-    width: '100%',
-    height: '100%',
-    borderRadius: BORDER_RADIUS.round,
-  },
-  avatarLabel: {
-    fontSize: FONT_SIZE.sm,
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.sm,
-  },
-  hint: {
-    fontSize: FONT_SIZE.xs,
-    color: COLORS.textTertiary,
-    marginTop: SPACING.xs,
-  },
-  section: {
+  content: {
     padding: SPACING.lg,
   },
-  formGroup: {
+  field: {
     marginBottom: SPACING.lg,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: SPACING.md,
-    marginBottom: SPACING.md,
-  },
-  halfInput: {
-    flex: 1,
   },
   label: {
     fontSize: FONT_SIZE.sm,
     fontWeight: FONT_WEIGHT.medium,
-    color: COLORS.text,
+    color: COLORS.textSecondary,
     marginBottom: SPACING.sm,
   },
   required: {
-    color: COLORS.error,
+    color: COLORS.accent,
   },
   input: {
     backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
     borderRadius: BORDER_RADIUS.md,
     padding: SPACING.md,
-    fontSize: FONT_SIZE.md,
-  },
-  textArea: {
-    height: 80,
-    textAlignVertical: 'top',
-  },
-  dateInput: {
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.md,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  dateText: {
     fontSize: FONT_SIZE.md,
     color: COLORS.text,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
-  datePlaceholder: {
-    fontSize: FONT_SIZE.md,
-    color: COLORS.textTertiary,
+  textArea: {
+    height: 100,
+    textAlignVertical: 'top',
   },
-  typeContainer: {
+  typeSelector: {
     flexDirection: 'row',
     gap: SPACING.sm,
   },
   typeButton: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: SPACING.md,
     backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.md,
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.md,
-    alignItems: 'center',
+    gap: SPACING.xs,
   },
   typeButtonActive: {
+    backgroundColor: COLORS.primary,
     borderColor: COLORS.primary,
-    backgroundColor: COLORS.divider,
   },
   typeText: {
     fontSize: FONT_SIZE.sm,
     color: COLORS.textSecondary,
-    marginTop: SPACING.xs,
   },
   typeTextActive: {
-    color: COLORS.primary,
-    fontWeight: FONT_WEIGHT.medium,
+    color: COLORS.textInverse,
   },
-  genderContainer: {
+  genderSelector: {
     flexDirection: 'row',
     gap: SPACING.sm,
   },
@@ -510,128 +361,92 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    padding: SPACING.md,
     backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.md,
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.md,
     gap: SPACING.xs,
   },
   genderButtonActive: {
+    backgroundColor: COLORS.primary,
     borderColor: COLORS.primary,
-    backgroundColor: COLORS.divider,
   },
   genderText: {
-    fontSize: FONT_SIZE.sm,
+    fontSize: FONT_SIZE.md,
     color: COLORS.textSecondary,
   },
   genderTextActive: {
-    color: COLORS.primary,
-    fontWeight: FONT_WEIGHT.medium,
+    color: COLORS.textInverse,
   },
-  personalityInputRow: {
+  dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    gap: SPACING.sm,
+  },
+  dateText: {
+    fontSize: FONT_SIZE.md,
+    color: COLORS.text,
+  },
+  personalityInput: {
     flexDirection: 'row',
     gap: SPACING.sm,
   },
-  personalityInput: {
+  personalityTextInput: {
     flex: 1,
-  },
-  addPersonalityButton: {
     backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.md,
+    fontSize: FONT_SIZE.md,
+    color: COLORS.text,
     borderWidth: 1,
     borderColor: COLORS.border,
+  },
+  addTagButton: {
+    width: 48,
+    height: 48,
     borderRadius: BORDER_RADIUS.md,
-    paddingHorizontal: SPACING.md,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  addPersonalityButtonText: {
-    color: COLORS.textSecondary,
-    fontWeight: FONT_WEIGHT.medium,
-  },
-  personalityTags: {
+  tagsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: SPACING.sm,
     marginTop: SPACING.sm,
   },
-  personalityTag: {
+  tag: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.divider,
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.xs,
-    borderRadius: BORDER_RADIUS.round,
+    borderRadius: BORDER_RADIUS.md,
     gap: SPACING.xs,
   },
-  personalityTagText: {
+  tagText: {
     fontSize: FONT_SIZE.sm,
     color: COLORS.text,
-    fontWeight: FONT_WEIGHT.medium,
   },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: SPACING.md,
+  saveButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    alignItems: 'center',
     marginTop: SPACING.lg,
   },
-  cancelButton: {
-    flex: 1,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.md,
-    alignItems: 'center',
+  saveButtonDisabled: {
+    opacity: 0.6,
   },
-  cancelButtonText: {
-    fontSize: FONT_SIZE.md,
-    color: COLORS.text,
-    fontWeight: FONT_WEIGHT.medium,
-  },
-  submitButton: {
-    flex: 1,
-    borderRadius: BORDER_RADIUS.md,
-    overflow: 'hidden',
-  },
-  submitButtonInner: {
-    backgroundColor: COLORS.primary,
-    padding: SPACING.md,
-    alignItems: 'center',
-  },
-  submitButtonText: {
-    fontSize: FONT_SIZE.md,
-    fontWeight: FONT_WEIGHT.semibold,
+  saveButtonText: {
     color: COLORS.textInverse,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  datePickerContainer: {
-    backgroundColor: COLORS.surface,
-    borderTopLeftRadius: BORDER_RADIUS.lg,
-    borderTopRightRadius: BORDER_RADIUS.lg,
-  },
-  datePickerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  datePickerTitle: {
-    fontSize: FONT_SIZE.md,
-    fontWeight: FONT_WEIGHT.semibold,
-    color: COLORS.text,
-  },
-  cancelText: {
-    fontSize: FONT_SIZE.md,
-    color: COLORS.textSecondary,
-  },
-  confirmText: {
-    fontSize: FONT_SIZE.md,
-    color: COLORS.primary,
+    fontSize: FONT_SIZE.lg,
     fontWeight: FONT_WEIGHT.semibold,
   },
 });
