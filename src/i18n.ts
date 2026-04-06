@@ -108,6 +108,10 @@ export interface Translations {
   personalityTags: string;
   aboutPet: string;
   lookingForCompanion: string;
+  lookingToggle: string;
+  lookingToggleHint: string;
+  lookingOn: string;
+  lookingOff: string;
   avatarUrl: string;
   leaveForDefault: string;
   required: string;
@@ -161,6 +165,8 @@ export interface Translations {
   matches: string;
   chat: string;
   noMatches: string;
+  receivedLikes: string;
+  noLikesYet: string;
   startChat: string;
   typeMessage: string;
   send: string;
@@ -262,6 +268,10 @@ const en: Translations = {
   personalityTags: 'Personality Tags',
   aboutPet: 'About',
   lookingForCompanion: 'Looking For',
+  lookingToggle: '寻找伴侣',
+  lookingToggleHint: '开启后其他用户可以在相亲页面看到您的宠物',
+  lookingOn: '征婚中',
+  lookingOff: '已关闭',
   avatarUrl: 'Avatar URL',
   leaveForDefault: 'Leave empty for default',
   required: '*',
@@ -313,6 +323,8 @@ const en: Translations = {
   matches: 'Matches',
   chat: 'Chat',
   noMatches: 'No matches yet',
+  receivedLikes: 'Received Likes',
+  noLikesYet: 'No likes yet',
   startChat: 'Start chatting',
   typeMessage: 'Type a message...',
   send: 'Send',
@@ -414,6 +426,10 @@ const zh: Translations = {
   personalityTags: '性格标签',
   aboutPet: '自我介绍',
   lookingForCompanion: '期望对象',
+  lookingToggle: '寻找伴侣',
+  lookingToggleHint: '开启后其他用户可以在相亲页面看到您的宠物',
+  lookingOn: '征婚中',
+  lookingOff: '已关闭',
   avatarUrl: '头像链接',
   leaveForDefault: '留空将使用默认头像',
   required: '*',
@@ -465,6 +481,8 @@ const zh: Translations = {
   matches: '匹配',
   chat: '聊天',
   noMatches: '还没有匹配',
+  receivedLikes: '收到的喜欢',
+  noLikesYet: '还没有人喜欢你的宠物',
   startChat: '开始聊天',
   typeMessage: '输入消息...',
   send: '发送',

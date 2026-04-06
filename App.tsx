@@ -20,21 +20,22 @@ import PetDetailScreen from './src/screens/PetDetailScreen';
 import PetListScreen from './src/screens/PetListScreen';
 import PhoneAuthScreen from './src/screens/PhoneAuthScreen';
 import MatchesScreen from './src/screens/MatchesScreen';
+import LikesScreen from './src/screens/LikesScreen';
 import ChatScreen from './src/screens/ChatScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
-function toggleLanguage() {
-  const { language, setLanguage } = useI18n();
-  setLanguage(language === 'en' ? 'zh' : 'en');
-}
-
 // Custom Header
 function CustomHeader() {
   const navigation = useNavigation();
-  const { language } = useI18n();
-  const { user, userProfile } = useAuth();
+  const { language, setLanguage } = useI18n();
+  const { user } = useAuth();
+
+  const handleLogout = async () => {
+    const { signOut } = await import('./src/firebase/auth');
+    await signOut();
+  };
 
   return (
     <View style={styles.customHeader}>
@@ -45,6 +46,14 @@ function CustomHeader() {
           <Text style={styles.headerTitle}>PawMate</Text>
         </View>
         <View style={styles.headerRight}>
+          {user && (
+            <TouchableOpacity
+              onPress={handleLogout}
+              style={styles.headerButton}
+            >
+              <Ionicons name="log-out-outline" size={22} color={COLORS.textSecondary} />
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             onPress={() => (navigation as any).navigate('Community')}
             style={styles.headerButton}
@@ -53,7 +62,7 @@ function CustomHeader() {
           </TouchableOpacity>
           <TouchableOpacity onPress={() => {
             console.log('Language button pressed');
-            toggleLanguage();
+            setLanguage(language === 'en' ? 'zh' : 'en');
           }} style={styles.langButton}>
             <Text style={styles.langButtonText}>{language === 'en' ? 'EN' : '中'}</Text>
           </TouchableOpacity>
@@ -145,6 +154,7 @@ function AppNavigator() {
       <Stack.Screen name="PetDetail" component={PetDetailScreen} options={{ title: t('petInfo') }} />
       <Stack.Screen name="PetList" component={PetListScreen} options={{ title: t('myPets') }} />
       <Stack.Screen name="Chat" component={ChatScreen} options={{ title: t('chat') || 'Chat' }} />
+      <Stack.Screen name="Likes" component={LikesScreen} options={{ title: t('receivedLikes') }} />
     </Stack.Navigator>
   );
 }

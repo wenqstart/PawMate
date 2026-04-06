@@ -38,19 +38,26 @@ export default function ChatScreen({ route, navigation }: ChatScreenProps) {
   const otherPet = getOtherPet();
 
   useEffect(() => {
+    console.log('ChatScreen useEffect - subscribing to match:', matchId);
     const unsubscribe = subscribeToMessages(matchId, (msgs) => {
+      console.log('Messages received:', msgs.length, msgs);
       setMessages(msgs);
     });
 
-    return () => unsubscribe();
+    return () => {
+      console.log('Unsubscribing from messages');
+      unsubscribe();
+    };
   }, [matchId]);
 
   const handleSend = async () => {
     if (!inputText.trim() || !user || !userProfile) return;
 
+    console.log('Sending message:', { matchId, senderId: user.uid, senderName: userProfile.nickname });
     setLoading(true);
     try {
       await sendMessage(matchId, user.uid, userProfile.nickname || 'User', inputText.trim());
+      console.log('Message sent successfully');
       setInputText('');
     } catch (error) {
       console.error('Error sending message:', error);

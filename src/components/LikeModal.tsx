@@ -9,7 +9,6 @@ import {
   Image,
   TextInput,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, FONT_SIZE } from '../theme';
 import { Pet } from '../firebase/auth';
@@ -213,14 +212,9 @@ export default function LikeModal({
               onPress={handleConfirm}
               disabled={!selectedPet || (!selectedMessage && !customMessage)}
             >
-              <LinearGradient
-                colors={[COLORS.gradientStart, COLORS.gradientEnd]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.confirmButtonGradient}
-              >
+              <View style={styles.confirmButtonGradient}>
                 <Text style={styles.confirmButtonText}>发送喜欢</Text>
-              </LinearGradient>
+              </View>
             </TouchableOpacity>
           </View>
         </View>
@@ -312,7 +306,7 @@ const styles = StyleSheet.create({
   },
   emptyHint: {
     fontSize: FONT_SIZE.sm,
-    color: COLORS.textLight,
+    color: COLORS.textTertiary,
     marginTop: SPACING.xs,
   },
   petList: {
@@ -422,6 +416,8 @@ const styles = StyleSheet.create({
   confirmButtonGradient: {
     padding: SPACING.md,
     alignItems: 'center',
+    backgroundColor: COLORS.gradientStart,
+    borderRadius: BORDER_RADIUS.md,
   },
   confirmButtonText: {
     fontSize: FONT_SIZE.md,

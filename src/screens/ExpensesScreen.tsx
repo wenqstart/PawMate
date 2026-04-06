@@ -26,7 +26,7 @@ const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
 };
 
 // Category labels from i18n
-const getCategoryLabel = (key: string): string => {
+const getCategoryLabel = (key: string, t: (key: any) => string): string => {
   const labels: Record<string, keyof typeof import('../i18n').en> = {
     food: 'food',
     medical: 'medical',
@@ -63,6 +63,8 @@ export default function ExpensesScreen() {
       loadedExpenses = mockExpenses;
       await saveExpenses(loadedExpenses);
     }
+    console.log('loadedExpenses', loadedExpenses);
+    
     setExpenses(loadedExpenses);
   };
 
@@ -176,7 +178,7 @@ export default function ExpensesScreen() {
                   />
                 </View>
                 <Text style={styles.categoryLabel}>
-                  {getCategoryLabel(category)}
+                  {getCategoryLabel(category, t)}
                 </Text>
                 <Text style={styles.categoryTotal}>${total.toFixed(2)}</Text>
               </View>
@@ -211,7 +213,7 @@ export default function ExpensesScreen() {
                         <Text style={styles.petBadgeText}>{getPetName(expense.petId)}</Text>
                       </View>
                       <Text style={styles.expenseCategory}>
-                        {getCategoryLabel(expense.category)}
+                        {getCategoryLabel(expense.category, t)}
                       </Text>
                       <Text style={styles.expenseDate}>· {expense.date}</Text>
                     </View>
@@ -269,7 +271,7 @@ export default function ExpensesScreen() {
                     {['food', 'medical', 'toys', 'grooming', 'other'].map((key) => (
                       <Picker.Item
                         key={key}
-                        label={`${CATEGORY_ICONS[key as keyof typeof CATEGORY_ICONS]} ${getCategoryLabel(key)}`}
+                        label={`${CATEGORY_ICONS[key as keyof typeof CATEGORY_ICONS]} ${getCategoryLabel(key, t)}`}
                         value={key}
                       />
                     ))}

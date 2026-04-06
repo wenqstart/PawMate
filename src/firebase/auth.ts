@@ -51,6 +51,7 @@ export interface Pet {
   personality: string[];
   bio: string;
   lookingFor: string;
+  isLooking: boolean; // 是否在征婚
   ownerId: string;
   ownerName?: string;
   createdAt: any;
@@ -193,7 +194,7 @@ export const getUserPets = async (ownerId: string): Promise<Pet[]> => {
   return pets;
 };
 
-// Get all pets (for browsing, excluding current user's pets)
+// Get all pets (for browsing, excluding current user's pets, only show pets that are looking for partner)
 export const getAllPets = async (excludeUserId: string): Promise<Pet[]> => {
   const pets: Pet[] = [];
 
@@ -209,7 +210,8 @@ export const getAllPets = async (excludeUserId: string): Promise<Pet[]> => {
 
     for (const petDoc of petsSnapshot.docs) {
       const data = petDoc.data();
-      if (!data.deletedAt) {
+      // Only show pets that are looking for a partner
+      if (!data.deletedAt && data.isLooking === true) {
         pets.push({
           ...data,
           ownerId: userDoc.id,
@@ -246,14 +248,17 @@ export const likePet = async (
   likedPetId: string,
   message: string
 ): Promise<{ matched: boolean; matchId?: string }> => {
+  console.log('likePet called:', { likerId, likerPetId, likedPetId, message });
   const matchesRef = collection(firestore, 'matches');
 
   // Check if other user already liked us
   const q = query(matchesRef, where('pets', '==', [likedPetId, likerPetId].sort()));
   const snapshot = await getDocs(q);
+  console.log('Existing matches found:', snapshot.empty ? 0 : snapshot.docs.length);
 
   if (!snapshot.empty) {
     const existingMatch = snapshot.docs[0].data();
+    console.log('Matching with existing match:', existingMatch.id);
     await updateDoc(doc(firestore, 'matches', existingMatch.id), {
       users: [likerId, existingMatch.users[0]],
       status: 'matched',
@@ -262,6 +267,7 @@ export const likePet = async (
     return { matched: true, matchId: existingMatch.id };
   } else {
     const matchRef = doc(matchesRef);
+    console.log('Creating new pending like');
     await setDoc(matchRef, {
       id: matchRef.id,
       users: [likerId],
@@ -312,8 +318,77 @@ export const getUserMatches = async (userId: string): Promise<Match[]> => {
   return matches;
 };
 
+// Get pending likes (requests sent to user's pets)
+export const getPendingLikes = async (userId: string): Promise<any[]> => {
+  console.log('=== getPendingLikes ===');
+  console.log('userId:', userId);
+
+  const pets = await getUserPets(userId);
+  console.log('User pets count:', pets.length);
+
+  if (pets.length === 0) {
+    console.log('No pets found for user');
+    return [];
+  }
+
+  const petIds = pets.map(p => p.id);
+  console.log('User pet IDs:', petIds);
+
+  const matchesRef = collection(firestore, 'matches');
+  const pendingLikes: any[] = [];
+
+  // Get ALL matches to debug
+  const snapshot = await getDocs(matchesRef);
+  console.log('Total matches in DB:', snapshot.docs.length);
+
+  for (const docSnap of snapshot.docs) {
+    const data = docSnap.data();
+    console.log('  Match:', docSnap.id);
+    console.log('    status:', data.status);
+    console.log('    pets:', data.pets);
+    console.log('    users:', data.users);
+
+    // Check if any of user's pets is in this match's pets array
+    const isLikedPet = petIds.includes(data.pets[0]) || petIds.includes(data.pets[1]);
+    console.log('    hasUserPet:', isLikedPet);
+
+    // Only show pending likes (where user didn't respond yet)
+    // Pending = other user liked my pet, I haven't accepted or pass yet
+    console.log('    -> isLikedPet:', isLikedPet, 'status:', data.status);
+    if (isLikedPet && data.status === 'pending') {
+      console.log('    -> PENDING LIKE! This is a like for user\'s pet');
+
+      const likedPetId = petIds.includes(data.pets[0]) ? data.pets[0] : data.pets[1];
+      const likedPet = pets.find(p => p.id === likedPetId);
+
+      const likerPetId = data.pets[0] === likedPetId ? data.pets[1] : data.pets[0];
+      console.log('    likedPetId:', likedPetId, 'likerPetId:', likerPetId);
+
+      const likerPet = await getPetById(likerPetId);
+      console.log('    likerPet:', likerPet);
+
+      // Determine the other user (not current user)
+      const otherUserId = data.users.find((u: string) => u !== userId);
+
+      pendingLikes.push({
+        id: docSnap.id,
+        likedPet,
+        likerPet,
+        message: data.message,
+        createdAt: data.createdAt,
+        status: data.status,
+        otherUserId,
+      });
+    }
+  }
+
+  console.log('Total likes found:', pendingLikes.length);
+  return pendingLikes;
+};
+
 // Send message
 export const sendMessage = async (matchId: string, senderId: string, senderName: string, content: string): Promise<void> => {
+  console.log('sendMessage called:', { matchId, senderId, senderName, content });
   const messagesRef = ref(realtimeDb, `matches/${matchId}/messages`);
   const newMessageRef = push(messagesRef);
 
@@ -323,10 +398,12 @@ export const sendMessage = async (matchId: string, senderId: string, senderName:
     content,
     timestamp: Date.now(),
   });
+  console.log('Message sent successfully');
 };
 
 // Subscribe to messages
 export const subscribeToMessages = (matchId: string, callback: (messages: Message[]) => void) => {
+  console.log('subscribeToMessages called for match:', matchId);
   const messagesRef = ref(realtimeDb, `matches/${matchId}/messages`);
 
   const unsubscribe = onValue(messagesRef, (snapshot) => {

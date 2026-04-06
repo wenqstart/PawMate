@@ -83,7 +83,16 @@ export default function MatchesScreen({ navigation }: any) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t('matches')}</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.headerTitle}>{t('matches')}</Text>
+          <TouchableOpacity
+            style={styles.likesButton}
+            onPress={() => navigation.navigate('Likes')}
+          >
+            <Ionicons name="heart" size={20} color={COLORS.accent} />
+            <Text style={styles.likesButtonText}>{t('receivedLikes')}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {matches.length === 0 ? (
@@ -116,6 +125,11 @@ const styles = StyleSheet.create({
     padding: SPACING.lg,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: FONT_SIZE.xxl,
@@ -177,5 +191,19 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     textAlign: 'center',
     marginTop: SPACING.xl,
+  },
+  likesButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.accent + '20',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: BORDER_RADIUS.md,
+    gap: SPACING.xs,
+  },
+  likesButtonText: {
+    fontSize: FONT_SIZE.sm,
+    color: COLORS.accent,
+    fontWeight: FONT_WEIGHT.medium,
   },
 });

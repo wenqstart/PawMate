@@ -29,7 +29,6 @@ export default function PetDetailScreen({ route, navigation }: PetDetailScreenPr
   const { t } = useI18n();
   const { pet } = route.params as { petId?: string; pet?: Pet };
   const [currentPet, setCurrentPet] = useState<Pet | null>(pet || null);
-  const [isEditing, setIsEditing] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const handleDelete = () => {
@@ -84,7 +83,10 @@ export default function PetDetailScreen({ route, navigation }: PetDetailScreenPr
       <View style={styles.imageContainer}>
         <Image source={{ uri: photos[0] }} style={styles.petImage} />
         <View style={styles.imageOverlay}>
-          <TouchableOpacity style={styles.editButton} onPress={() => setIsEditing(true)}>
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => navigation.navigate('AddPet', { pet: currentPet, isEdit: true })}
+          >
             <Ionicons name="pencil" size={20} color={COLORS.text} />
           </TouchableOpacity>
         </View>

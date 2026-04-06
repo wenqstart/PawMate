@@ -29,6 +29,10 @@ export const COLORS = {
   error: '#8B3A3A',
   info: '#5C7A99',
 
+  // Gradient colors
+  gradientStart: '#C4A484',
+  gradientEnd: '#A8896A',
+
   // Neutral - Warm grays
   border: '#E8E6E3',
   divider: '#F0EEEB',

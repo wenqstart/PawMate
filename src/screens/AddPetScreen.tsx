@@ -11,6 +11,7 @@ import {
   Modal,
   Platform,
   ActivityIndicator,
+  Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
@@ -47,6 +48,7 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
     personality: editPet?.personality || [] as string[],
     bio: editPet?.bio || '',
     lookingFor: editPet?.lookingFor || '',
+    isLooking: editPet?.isLooking ?? true, // 默认开启征婚
   });
 
   const [personalityInput, setPersonalityInput] = useState('');
@@ -111,6 +113,7 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
         personality: formData.personality,
         bio: formData.bio.trim(),
         lookingFor: formData.lookingFor.trim(),
+        isLooking: formData.isLooking,
         ownerId: user.uid,
         ownerName: userProfile?.nickname || user.phoneNumber || 'Unknown',
       };
@@ -267,6 +270,25 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
           multiline
           numberOfLines={2}
         />
+      </View>
+
+      {/* Is Looking Toggle */}
+      <View style={styles.field}>
+        <View style={styles.switchRow}>
+          <View style={styles.switchLabelContainer}>
+            <Ionicons name="heart" size={20} color={formData.isLooking ? COLORS.accent : COLORS.textTertiary} />
+            <Text style={styles.switchLabel}>{t('lookingToggle')}</Text>
+          </View>
+          <Switch
+            value={formData.isLooking}
+            onValueChange={(value) => setFormData({ ...formData, isLooking: value })}
+            trackColor={{ false: COLORS.border, true: COLORS.accent }}
+            thumbColor={COLORS.textInverse}
+          />
+        </View>
+        <Text style={styles.switchHint}>
+          {formData.isLooking ? t('lookingOn') : t('lookingOff')}
+        </Text>
       </View>
 
       {/* Save Button */}
@@ -441,5 +463,31 @@ const styles = StyleSheet.create({
     color: COLORS.textInverse,
     fontSize: FONT_SIZE.lg,
     fontWeight: FONT_WEIGHT.semibold,
+  },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.surface,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  switchLabelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  switchLabel: {
+    fontSize: FONT_SIZE.md,
+    fontWeight: FONT_WEIGHT.medium,
+    color: COLORS.text,
+  },
+  switchHint: {
+    fontSize: FONT_SIZE.sm,
+    color: COLORS.textTertiary,
+    marginTop: SPACING.xs,
+    paddingHorizontal: SPACING.xs,
   },
 });

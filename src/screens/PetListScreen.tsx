@@ -103,6 +103,11 @@ export default function PetListScreen({ navigation }: any) {
                     <Ionicons name="paw" size={30} color={COLORS.textTertiary} />
                   </View>
                 )}
+                {pet.isLooking && (
+                  <View style={styles.lookingBadge}>
+                    <Ionicons name="heart" size={10} color={COLORS.textInverse} />
+                  </View>
+                )}
               </View>
               <View style={styles.petInfo}>
                 <View style={styles.petNameRow}>
@@ -196,6 +201,7 @@ const styles = StyleSheet.create({
   },
   petImageContainer: {
     marginRight: SPACING.md,
+    position: 'relative',
   },
   petImage: {
     width: 70,
@@ -209,6 +215,19 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  lookingBadge: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: COLORS.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.white,
   },
   petInfo: {
     flex: 1,
