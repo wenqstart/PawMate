@@ -1,20 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   Modal,
   TextInput,
   Alert,
+  FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZE, FONT_WEIGHT } from '../theme';
 import { useI18n } from '../i18n';
-import { Pet, Expense } from '../types';
-import { getPets, getExpenses, addExpense, saveExpenses } from '../utils/storage';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Expense } from '../types';
+import { getExpenses, addExpense, saveExpenses, updateExpense } from '../utils/storage';
 import { mockExpenses } from '../data/mockData';
 
 const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
@@ -25,9 +28,16 @@ const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   other: 'cube',
 };
 
-// Category labels from i18n
+const CATEGORY_COLORS: Record<string, string> = {
+  food: '#E07B5A',
+  medical: '#D4736B',
+  toys: '#F5B041',
+  grooming: '#C9898A',
+  other: '#9E9689',
+};
+
 const getCategoryLabel = (key: string, t: (key: any) => string): string => {
-  const labels: Record<string, keyof typeof import('../i18n').en> = {
+  const labels: Record<string, string> = {
     food: 'food',
     medical: 'medical',
     toys: 'toys',
@@ -37,13 +47,19 @@ const getCategoryLabel = (key: string, t: (key: any) => string): string => {
   return t(labels[key] || 'other');
 };
 
+const PAGE_SIZE = 20;
+
 export default function ExpensesScreen() {
   const { t } = useI18n();
-  const [pets, setPets] = useState<Pet[]>([]);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const [allExpenses, setAllExpenses] = useState<Expense[]>([]);
+  const [displayedExpenses, setDisplayedExpenses] = useState<Expense[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+
   const [formData, setFormData] = useState({
-    petId: '',
     category: 'food' as Expense['category'],
     amount: '',
     description: '',
@@ -55,80 +71,153 @@ export default function ExpensesScreen() {
   }, []);
 
   const loadData = async () => {
-    const loadedPets = await getPets();
-    setPets(loadedPets);
-
     let loadedExpenses = await getExpenses();
     if (loadedExpenses.length === 0) {
       loadedExpenses = mockExpenses;
       await saveExpenses(loadedExpenses);
     }
-    console.log('loadedExpenses', loadedExpenses);
-    
-    setExpenses(loadedExpenses);
+
+    const sorted = [...loadedExpenses].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+    setAllExpenses(sorted);
+    setDisplayedExpenses(sorted.slice(0, PAGE_SIZE));
+    setHasMore(sorted.length > PAGE_SIZE);
   };
 
+  const loadMore = useCallback(() => {
+    if (loading || !hasMore) return;
+
+    setLoading(true);
+    const currentLength = displayedExpenses.length;
+    const nextExpenses = allExpenses.slice(currentLength, currentLength + PAGE_SIZE);
+
+    if (nextExpenses.length > 0) {
+      setDisplayedExpenses(prev => [...prev, ...nextExpenses]);
+    }
+
+    setHasMore(currentLength + nextExpenses.length < allExpenses.length);
+    setLoading(false);
+  }, [loading, hasMore, displayedExpenses.length, allExpenses]);
+
   const handleSubmit = async () => {
-    if (!formData.petId || !formData.amount || !formData.description) {
+    if (!formData.amount || !formData.description) {
       Alert.alert('Info', 'Please fill in all fields');
       return;
     }
 
-    const newExpense: Expense = {
-      id: Date.now().toString(),
-      petId: formData.petId,
-      category: formData.category,
-      amount: parseFloat(formData.amount),
-      description: formData.description,
-      date: formData.date,
-    };
-
-    await addExpense(newExpense);
-    setExpenses([...expenses, newExpense]);
-    Alert.alert('Success', 'Expense added');
+    if (editingExpense) {
+      const updatedExpense: Expense = {
+        ...editingExpense,
+        category: formData.category,
+        amount: parseFloat(formData.amount),
+        description: formData.description,
+        date: formData.date,
+      };
+      await updateExpense(updatedExpense);
+      setAllExpenses(prev => prev.map(e => e.id === editingExpense.id ? updatedExpense : e));
+      setDisplayedExpenses(prev => prev.map(e => e.id === editingExpense.id ? updatedExpense : e));
+      Alert.alert('Success', 'Expense updated');
+    } else {
+      const newExpense: Expense = {
+        id: Date.now().toString(),
+        category: formData.category,
+        amount: parseFloat(formData.amount),
+        description: formData.description,
+        date: formData.date,
+      };
+      await addExpense(newExpense);
+      const updatedAll = [newExpense, ...allExpenses].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      setAllExpenses(updatedAll);
+      setDisplayedExpenses(updatedAll.slice(0, displayedExpenses.length));
+      Alert.alert('Success', 'Expense added');
+    }
     setModalVisible(false);
     resetForm();
   };
 
   const resetForm = () => {
     setFormData({
-      petId: '',
       category: 'food',
       amount: '',
       description: '',
       date: new Date().toISOString().split('T')[0],
     });
+    setEditingExpense(null);
   };
 
-  const getPetName = (petId: string) => {
-    const pet = pets.find(p => p.id === petId);
-    return pet?.name || 'Unknown';
+  const handleEditExpense = (expense: Expense) => {
+    setEditingExpense(expense);
+    setFormData({
+      category: expense.category,
+      amount: expense.amount.toString(),
+      description: expense.description,
+      date: expense.date,
+    });
+    setModalVisible(true);
   };
 
-  const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
-  const thisMonthExpenses = expenses
-    .filter(exp => {
-      const expDate = new Date(exp.date);
-      const now = new Date();
-      return expDate.getMonth() === now.getMonth() &&
-             expDate.getFullYear() === now.getFullYear();
-    })
-    .reduce((sum, exp) => sum + exp.amount, 0);
+  const renderExpenseItem = ({ item }: { item: Expense }) => (
+    <TouchableOpacity
+      style={styles.expenseCard}
+      onPress={() => handleEditExpense(item)}
+      onLongPress={() => {
+        Alert.alert(
+          t('edit'),
+          t('edit') + '?',
+          [
+            { text: t('cancel'), style: 'cancel' },
+            { text: t('edit'), onPress: () => handleEditExpense(item) },
+          ]
+        );
+      }}
+    >
+      <View style={[styles.expenseIconContainer, { backgroundColor: CATEGORY_COLORS[item.category] + '20' }]}>
+        <Ionicons
+          name={CATEGORY_ICONS[item.category] || 'cube'}
+          size={20}
+          color={CATEGORY_COLORS[item.category]}
+        />
+      </View>
+      <View style={styles.expenseInfo}>
+        <Text style={styles.expenseDescription}>{item.description}</Text>
+        <View style={styles.expenseDetails}>
+          <Text style={[styles.expenseCategory, { color: CATEGORY_COLORS[item.category] }]}>
+            {getCategoryLabel(item.category, t)}
+          </Text>
+          <Text style={styles.expenseDate}>· {item.date}</Text>
+        </View>
+      </View>
+      <Text style={styles.expenseAmount}>${item.amount.toFixed(2)}</Text>
+    </TouchableOpacity>
+  );
 
-  const categoryTotals = expenses.reduce((acc, exp) => {
-    acc[exp.category] = (acc[exp.category] || 0) + exp.amount;
-    return acc;
-  }, {} as Record<string, number>);
+  const renderFooter = () => {
+    if (!loading) return null;
+    return (
+      <View style={styles.footer}>
+        <ActivityIndicator size="small" color={COLORS.primary} />
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.headerTitle}>{t('expensesAction')}</Text>
-            <Text style={styles.headerSubtitle}>{t('trackSpending')}</Text>
-          </View>
+      {/* Header */}
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.headerTitle}>{t('expensesAction')}</Text>
+          <Text style={styles.headerSubtitle}>{t('trackSpending')}</Text>
+        </View>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity
+            style={styles.statsButton}
+            onPress={() => navigation.navigate('ExpenseStats')}
+          >
+            <Ionicons name="stats-chart" size={22} color={COLORS.primary} />
+          </TouchableOpacity>
           <TouchableOpacity
             style={styles.addButton}
             onPress={() => setModalVisible(true)}
@@ -136,96 +225,36 @@ export default function ExpensesScreen() {
             <Ionicons name="add" size={22} color={COLORS.textInverse} />
           </TouchableOpacity>
         </View>
+      </View>
 
-        {/* Stats */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <View style={[styles.statIcon, styles.statIconPrimary]}>
-              <Ionicons name="wallet" size={20} color={COLORS.textInverse} />
-            </View>
-            <Text style={styles.statLabel}>{t('total')}</Text>
-            <Text style={styles.statValue}>${totalExpenses.toFixed(2)}</Text>
+      {/* Expense List */}
+      {displayedExpenses.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <View style={styles.emptyIconContainer}>
+            <Ionicons name="wallet-outline" size={60} color={COLORS.primary} />
           </View>
-
-          <View style={styles.statCard}>
-            <View style={[styles.statIcon, styles.statIconSecondary]}>
-              <Ionicons name="calendar" size={20} color={COLORS.textInverse} />
-            </View>
-            <Text style={styles.statLabel}>{t('thisMonth')}</Text>
-            <Text style={styles.statValue}>${thisMonthExpenses.toFixed(2)}</Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <View style={[styles.statIcon, styles.statIconTertiary]}>
-              <Ionicons name="list" size={20} color={COLORS.textInverse} />
-            </View>
-            <Text style={styles.statLabel}>{t('records')}</Text>
-            <Text style={styles.statValue}>{expenses.length}</Text>
-          </View>
+          <Text style={styles.emptyTitle}>{t('noExpenses')}</Text>
+          <Text style={styles.emptySubtitle}>{t('trackSpending')}</Text>
+          <TouchableOpacity
+            style={styles.emptyAddButton}
+            onPress={() => setModalVisible(true)}
+          >
+            <Ionicons name="add" size={18} color={COLORS.textInverse} />
+            <Text style={styles.emptyAddButtonText}>{t('addExpense')}</Text>
+          </TouchableOpacity>
         </View>
-
-        {/* Categories */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('byCategory')}</Text>
-          <View style={styles.categoryGrid}>
-            {Object.entries(categoryTotals).map(([category, total]) => (
-              <View key={category} style={styles.categoryCard}>
-                <View style={styles.categoryIconContainer}>
-                  <Ionicons
-                    name={CATEGORY_ICONS[category as keyof typeof CATEGORY_ICONS] || 'cube'}
-                    size={20}
-                    color={COLORS.textSecondary}
-                  />
-                </View>
-                <Text style={styles.categoryLabel}>
-                  {getCategoryLabel(category, t)}
-                </Text>
-                <Text style={styles.categoryTotal}>${total.toFixed(2)}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* Expense List */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('recent')}</Text>
-          {expenses.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="wallet-outline" size={40} color={COLORS.textTertiary} />
-              <Text style={styles.emptyText}>{t('noExpenses')}</Text>
-            </View>
-          ) : (
-            expenses
-              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-              .map((expense) => (
-                <View key={expense.id} style={styles.expenseCard}>
-                  <View style={styles.expenseIconContainer}>
-                    <Ionicons
-                      name={CATEGORY_ICONS[expense.category] || 'cube'}
-                      size={20}
-                      color={COLORS.textSecondary}
-                    />
-                  </View>
-                  <View style={styles.expenseInfo}>
-                    <Text style={styles.expenseDescription}>{expense.description}</Text>
-                    <View style={styles.expenseDetails}>
-                      <View style={styles.petBadge}>
-                        <Text style={styles.petBadgeText}>{getPetName(expense.petId)}</Text>
-                      </View>
-                      <Text style={styles.expenseCategory}>
-                        {getCategoryLabel(expense.category, t)}
-                      </Text>
-                      <Text style={styles.expenseDate}>· {expense.date}</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.expenseAmount}>${expense.amount.toFixed(2)}</Text>
-                </View>
-              ))
-          )}
-        </View>
-
-        <View style={{ height: SPACING.xxl }} />
-      </ScrollView>
+      ) : (
+        <FlatList
+          data={displayedExpenses}
+          renderItem={renderExpenseItem}
+          keyExtractor={item => item.id}
+          contentContainerStyle={styles.listContent}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.3}
+          ListFooterComponent={renderFooter}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
 
       {/* Modal */}
       <Modal
@@ -237,28 +266,13 @@ export default function ExpensesScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{t('addExpense')}</Text>
+              <Text style={styles.modalTitle}>{editingExpense ? t('editExpense') : t('addExpense')}</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
                 <Ionicons name="close" size={22} color={COLORS.text} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView>
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>{t('pet')}</Text>
-                <View style={styles.pickerContainer}>
-                  <Picker
-                    selectedValue={formData.petId}
-                    onValueChange={(value) => setFormData({ ...formData, petId: value })}
-                  >
-                    <Picker.Item label={t('selectPet')} value="" />
-                    {pets.map((pet) => (
-                      <Picker.Item key={pet.id} label={pet.name} value={pet.id} />
-                    ))}
-                  </Picker>
-                </View>
-              </View>
-
+            <View>
               <View style={styles.formGroup}>
                 <Text style={styles.label}>{t('category')}</Text>
                 <View style={styles.pickerContainer}>
@@ -271,8 +285,9 @@ export default function ExpensesScreen() {
                     {['food', 'medical', 'toys', 'grooming', 'other'].map((key) => (
                       <Picker.Item
                         key={key}
-                        label={`${CATEGORY_ICONS[key as keyof typeof CATEGORY_ICONS]} ${getCategoryLabel(key, t)}`}
+                        label={`${getCategoryLabel(key, t)}`}
                         value={key}
+                        color={COLORS.text}
                       />
                     ))}
                   </Picker>
@@ -284,6 +299,7 @@ export default function ExpensesScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="0.00"
+                  placeholderTextColor={COLORS.textTertiary}
                   keyboardType="numeric"
                   value={formData.amount}
                   onChangeText={(text) => setFormData({ ...formData, amount: text })}
@@ -295,6 +311,7 @@ export default function ExpensesScreen() {
                 <TextInput
                   style={[styles.input, styles.textArea]}
                   placeholder={t('description')}
+                  placeholderTextColor={COLORS.textTertiary}
                   multiline
                   numberOfLines={3}
                   value={formData.description}
@@ -306,6 +323,7 @@ export default function ExpensesScreen() {
                 <Text style={styles.label}>{t('date')}</Text>
                 <TextInput
                   style={styles.input}
+                  placeholderTextColor={COLORS.textTertiary}
                   value={formData.date}
                   onChangeText={(text) => setFormData({ ...formData, date: text })}
                 />
@@ -314,7 +332,7 @@ export default function ExpensesScreen() {
               <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
                 <Text style={styles.submitButtonText}>{t('save')}</Text>
               </TouchableOpacity>
-            </ScrollView>
+            </View>
           </View>
         </View>
       </Modal>
@@ -335,13 +353,27 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: FONT_SIZE.xxl,
-    fontWeight: FONT_WEIGHT.semibold,
+    fontWeight: FONT_WEIGHT.bold,
     color: COLORS.text,
   },
   headerSubtitle: {
     fontSize: FONT_SIZE.sm,
     color: COLORS.textSecondary,
     marginTop: SPACING.xs,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+  },
+  statsButton: {
+    width: 44,
+    height: 44,
+    borderRadius: BORDER_RADIUS.round,
+    backgroundColor: COLORS.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   addButton: {
     width: 44,
@@ -350,104 +382,35 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  statsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: SPACING.lg,
-    gap: SPACING.sm,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: COLORS.surface,
-    padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.lg,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  statIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: BORDER_RADIUS.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: SPACING.sm,
-  },
-  statIconPrimary: {
-    backgroundColor: COLORS.accent,
-  },
-  statIconSecondary: {
-    backgroundColor: COLORS.info,
-  },
-  statIconTertiary: {
-    backgroundColor: COLORS.success,
-  },
-  statLabel: {
-    fontSize: FONT_SIZE.xs,
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.xs,
-  },
-  statValue: {
-    fontSize: FONT_SIZE.lg,
-    fontWeight: FONT_WEIGHT.semibold,
-    color: COLORS.text,
-  },
-  section: {
+  listContent: {
     padding: SPACING.lg,
-  },
-  sectionTitle: {
-    fontSize: FONT_SIZE.lg,
-    fontWeight: FONT_WEIGHT.semibold,
-    color: COLORS.text,
-    marginBottom: SPACING.md,
-  },
-  categoryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: SPACING.sm,
-  },
-  categoryCard: {
-    width: '31%',
-    backgroundColor: COLORS.surface,
-    padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    alignItems: 'center',
-  },
-  categoryIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: BORDER_RADIUS.md,
-    backgroundColor: COLORS.divider,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: SPACING.xs,
-  },
-  categoryLabel: {
-    fontSize: FONT_SIZE.xs,
-    color: COLORS.textSecondary,
-    marginBottom: 2,
-  },
-  categoryTotal: {
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.semibold,
-    color: COLORS.text,
+    paddingTop: 0,
   },
   expenseCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
     padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: BORDER_RADIUS.lg,
     marginBottom: SPACING.sm,
     borderWidth: 1,
     borderColor: COLORS.border,
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   expenseIconContainer: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: BORDER_RADIUS.md,
-    backgroundColor: COLORS.divider,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: SPACING.md,
@@ -466,20 +429,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: SPACING.xs,
   },
-  petBadge: {
-    backgroundColor: COLORS.divider,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 2,
-    borderRadius: BORDER_RADIUS.sm,
-  },
-  petBadgeText: {
-    fontSize: FONT_SIZE.xs,
-    color: COLORS.textSecondary,
-    fontWeight: FONT_WEIGHT.medium,
-  },
   expenseCategory: {
     fontSize: FONT_SIZE.xs,
-    color: COLORS.textTertiary,
+    fontWeight: FONT_WEIGHT.medium,
   },
   expenseDate: {
     fontSize: FONT_SIZE.xs,
@@ -487,21 +439,57 @@ const styles = StyleSheet.create({
   },
   expenseAmount: {
     fontSize: FONT_SIZE.lg,
-    fontWeight: FONT_WEIGHT.semibold,
+    fontWeight: FONT_WEIGHT.bold,
     color: COLORS.text,
   },
   emptyContainer: {
-    backgroundColor: COLORS.surface,
-    padding: SPACING.xl,
-    borderRadius: BORDER_RADIUS.lg,
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    padding: SPACING.xl,
   },
-  emptyText: {
+  emptyIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: BORDER_RADIUS.round,
+    backgroundColor: COLORS.primaryLight + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.lg,
+  },
+  emptyTitle: {
+    fontSize: FONT_SIZE.lg,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: COLORS.text,
+  },
+  emptySubtitle: {
     fontSize: FONT_SIZE.sm,
     color: COLORS.textSecondary,
-    marginTop: SPACING.md,
+    marginTop: SPACING.xs,
+  },
+  emptyAddButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    marginTop: SPACING.lg,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    borderRadius: BORDER_RADIUS.round,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  emptyAddButtonText: {
+    fontSize: FONT_SIZE.md,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: COLORS.textInverse,
+  },
+  footer: {
+    paddingVertical: SPACING.lg,
+    alignItems: 'center',
   },
   modalOverlay: {
     flex: 1,
@@ -523,7 +511,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: FONT_SIZE.xl,
-    fontWeight: FONT_WEIGHT.semibold,
+    fontWeight: FONT_WEIGHT.bold,
     color: COLORS.text,
   },
   formGroup: {
@@ -542,6 +530,7 @@ const styles = StyleSheet.create({
     borderRadius: BORDER_RADIUS.md,
     padding: SPACING.md,
     fontSize: FONT_SIZE.md,
+    color: COLORS.text,
   },
   textArea: {
     height: 80,
@@ -560,10 +549,15 @@ const styles = StyleSheet.create({
     borderRadius: BORDER_RADIUS.md,
     alignItems: 'center',
     marginTop: SPACING.md,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   submitButtonText: {
     fontSize: FONT_SIZE.md,
-    fontWeight: FONT_WEIGHT.semibold,
+    fontWeight: FONT_WEIGHT.bold,
     color: COLORS.textInverse,
   },
 });

@@ -63,6 +63,8 @@ const mockPosts: CommunityPost[] = [
   }
 ];
 
+const TOPIC_COLORS = ['#FF8A65', '#F5B041', '#A8D8B9', '#81D4FA', '#CE93D8'];
+
 export default function CommunityScreen({ navigation }: any) {
   const { t } = useI18n();
 
@@ -70,12 +72,13 @@ export default function CommunityScreen({ navigation }: any) {
     <TouchableOpacity key={post.id} style={styles.postCard} activeOpacity={0.7}>
       <View style={styles.postHeader}>
         <View style={styles.avatarContainer}>
-          <Ionicons name="paw" size={20} color={COLORS.textTertiary} />
+          <Ionicons name="paw" size={20} color={COLORS.primary} />
         </View>
         <View style={styles.postInfo}>
           <View style={styles.userRow}>
             <Text style={styles.userName}>{post.user}</Text>
             <View style={styles.petTypeBadge}>
+              <Ionicons name="paw" size={10} color={COLORS.primary} />
               <Text style={styles.petTypeText}>{post.petType}</Text>
             </View>
           </View>
@@ -85,44 +88,44 @@ export default function CommunityScreen({ navigation }: any) {
       <Text style={styles.postContent}>{post.content}</Text>
       <View style={styles.postActions}>
         <TouchableOpacity style={styles.actionButton}>
-          <Ionicons name="heart-outline" size={18} color={COLORS.textSecondary} />
-          <Text style={styles.actionText}>{post.likes}</Text>
+          <Ionicons name="heart-outline" size={18} color={COLORS.accent} />
+          <Text style={[styles.actionText, { color: COLORS.accent }]}>{post.likes}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.actionButton}>
-          <Ionicons name="chatbubble-outline" size={18} color={COLORS.textSecondary} />
-          <Text style={styles.actionText}>{post.comments}</Text>
+          <Ionicons name="chatbubble-outline" size={18} color={COLORS.info} />
+          <Text style={[styles.actionText, { color: COLORS.info }]}>{post.comments}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
-          <Ionicons name="share-outline" size={18} color={COLORS.textSecondary} />
+        <TouchableOpacity style={[styles.actionButton, styles.shareButton]}>
+          <Ionicons name="share-outline" size={18} color={COLORS.textTertiary} />
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
 
+  const topics = [t('cats'), t('dogs'), t('products'), t('adoption'), t('tips')];
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>{t('community')}</Text>
+        </View>
+
         {/* Topics */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.topicsContainer}
         >
-          <TouchableOpacity style={styles.topicTag}>
-            <Text style={styles.topicText}>{t('cats')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.topicTag}>
-            <Text style={styles.topicText}>{t('dogs')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.topicTag}>
-            <Text style={styles.topicText}>{t('products')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.topicTag}>
-            <Text style={styles.topicText}>{t('adoption')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.topicTag}>
-            <Text style={styles.topicText}>{t('tips')}</Text>
-          </TouchableOpacity>
+          {topics.map((topic, index) => (
+            <TouchableOpacity
+              key={index}
+              style={[styles.topicTag, { backgroundColor: TOPIC_COLORS[index] + '20', borderColor: TOPIC_COLORS[index] + '40' }]}
+            >
+              <Text style={[styles.topicText, { color: TOPIC_COLORS[index] }]}>{topic}</Text>
+            </TouchableOpacity>
+          ))}
         </ScrollView>
 
         {/* Posts */}
@@ -139,6 +142,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  header: {
+    padding: SPACING.lg,
+    paddingBottom: SPACING.sm,
+  },
+  headerTitle: {
+    fontSize: FONT_SIZE.xxl,
+    fontWeight: FONT_WEIGHT.bold,
+    color: COLORS.text,
+  },
   topicsContainer: {
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.md,
@@ -148,37 +160,41 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   topicTag: {
-    backgroundColor: COLORS.divider,
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
     borderRadius: BORDER_RADIUS.round,
     marginRight: SPACING.sm,
+    borderWidth: 1,
   },
   topicText: {
-    color: COLORS.textSecondary,
     fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.medium,
+    fontWeight: FONT_WEIGHT.semibold,
   },
   postsContainer: {
     padding: SPACING.lg,
   },
   postCard: {
     backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.lg,
+    borderRadius: BORDER_RADIUS.xl,
     padding: SPACING.lg,
     marginBottom: SPACING.md,
     borderWidth: 1,
     borderColor: COLORS.border,
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   postHeader: {
     flexDirection: 'row',
     marginBottom: SPACING.md,
   },
   avatarContainer: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: BORDER_RADIUS.round,
-    backgroundColor: COLORS.divider,
+    backgroundColor: COLORS.primaryLight + '20',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: SPACING.md,
@@ -191,22 +207,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 2,
+    flexWrap: 'wrap',
+    gap: SPACING.xs,
   },
   userName: {
     fontSize: FONT_SIZE.md,
     fontWeight: FONT_WEIGHT.semibold,
     color: COLORS.text,
-    marginRight: SPACING.sm,
   },
   petTypeBadge: {
-    backgroundColor: COLORS.divider,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: COLORS.primaryLight + '15',
     paddingHorizontal: SPACING.sm,
     paddingVertical: 2,
     borderRadius: BORDER_RADIUS.sm,
   },
   petTypeText: {
     fontSize: FONT_SIZE.xs,
-    color: COLORS.textSecondary,
+    color: COLORS.primary,
     fontWeight: FONT_WEIGHT.medium,
   },
   postTime: {
@@ -222,7 +242,7 @@ const styles = StyleSheet.create({
   postActions: {
     flexDirection: 'row',
     borderTopWidth: 1,
-    borderTopColor: COLORS.border,
+    borderTopColor: COLORS.divider,
     paddingTop: SPACING.md,
   },
   actionButton: {
@@ -230,9 +250,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: SPACING.lg,
   },
+  shareButton: {
+    marginLeft: 'auto',
+    marginRight: 0,
+  },
   actionText: {
     marginLeft: SPACING.xs,
     fontSize: FONT_SIZE.sm,
-    color: COLORS.textSecondary,
+    fontWeight: FONT_WEIGHT.medium,
   },
 });

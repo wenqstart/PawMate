@@ -97,7 +97,9 @@ export default function MatchesScreen({ navigation }: any) {
 
       {matches.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="heart-outline" size={60} color={COLORS.textTertiary} />
+          <View style={styles.emptyIconContainer}>
+            <Ionicons name="heart-outline" size={50} color={COLORS.primary} />
+          </View>
           <Text style={styles.emptyText}>{t('noMatches')}</Text>
           <Text style={styles.emptySubtext}>{t('dating')}</Text>
         </View>
@@ -143,14 +145,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: BORDER_RADIUS.lg,
     padding: SPACING.md,
     marginBottom: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
   },
   petImage: {
     width: 60,
     height: 60,
-    borderRadius: BORDER_RADIUS.round,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 2,
+    borderColor: COLORS.primaryLight + '30',
   },
   matchInfo: {
     flex: 1,
@@ -176,14 +187,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: SPACING.xl,
   },
+  emptyIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: BORDER_RADIUS.round,
+    backgroundColor: COLORS.primaryLight + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.lg,
+  },
   emptyText: {
     fontSize: FONT_SIZE.lg,
-    color: COLORS.textSecondary,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: COLORS.text,
     marginTop: SPACING.md,
   },
   emptySubtext: {
     fontSize: FONT_SIZE.sm,
-    color: COLORS.textTertiary,
+    color: COLORS.textSecondary,
     marginTop: SPACING.xs,
   },
   notLoggedIn: {

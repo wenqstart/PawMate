@@ -161,7 +161,9 @@ export default function LikesScreen({ navigation }: any) {
 
       {pendingLikes.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="heart-outline" size={60} color={COLORS.textTertiary} />
+          <View style={styles.emptyIconContainer}>
+            <Ionicons name="heart-outline" size={50} color={COLORS.primary} />
+          </View>
           <Text style={styles.emptyText}>{t('noLikesYet')}</Text>
           <Text style={styles.emptySubtext}>
             {t('dating') || '当有人喜欢你的宠物时，会在这里显示'}
@@ -206,11 +208,16 @@ const styles = StyleSheet.create({
   },
   likeItem: {
     backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.lg,
+    borderRadius: BORDER_RADIUS.xl,
     padding: SPACING.lg,
     marginBottom: SPACING.lg,
     borderWidth: 1,
     borderColor: COLORS.border,
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   petRow: {
     flexDirection: 'row',
@@ -224,8 +231,10 @@ const styles = StyleSheet.create({
   petImage: {
     width: 80,
     height: 80,
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: BORDER_RADIUS.lg,
     marginBottom: SPACING.xs,
+    borderWidth: 2,
+    borderColor: COLORS.primaryLight + '30',
   },
   petName: {
     fontSize: FONT_SIZE.md,
@@ -237,13 +246,21 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
   heartIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: BORDER_RADIUS.round,
+    backgroundColor: COLORS.accent + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: SPACING.sm,
   },
   messageContainer: {
-    backgroundColor: COLORS.divider,
+    backgroundColor: COLORS.primaryLight + '15',
     padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: BORDER_RADIUS.lg,
     marginTop: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.primaryLight + '30',
   },
   messageText: {
     fontSize: FONT_SIZE.sm,
@@ -276,7 +293,12 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
   acceptButton: {
-    backgroundColor: COLORS.accent,
+    backgroundColor: COLORS.primary,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   acceptButtonText: {
     fontSize: FONT_SIZE.md,
@@ -289,9 +311,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: SPACING.xxl,
   },
+  emptyIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: BORDER_RADIUS.round,
+    backgroundColor: COLORS.primaryLight + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.lg,
+  },
   emptyText: {
     fontSize: FONT_SIZE.lg,
-    color: COLORS.textSecondary,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: COLORS.text,
     marginTop: SPACING.lg,
   },
   emptySubtext: {

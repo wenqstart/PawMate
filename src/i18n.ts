@@ -72,12 +72,24 @@ export interface Translations {
   recent: string;
   noExpenses: string;
   addExpense: string;
+  editExpense: string;
+  expensesStatistics: string;
+  compareWithPeriod: string;
+  compareWithWeek: string;
+  compareWithMonth: string;
+  compareWithYear: string;
+  increase: string;
+  decrease: string;
+  categoryBreakdown: string;
   amount: string;
   description: string;
   date: string;
   category: string;
   pet: string;
   selectPet: string;
+  week: string;
+  month: string;
+  year: string;
 
   // Memories Screen
   importantDates: string;
@@ -234,12 +246,25 @@ const en: Translations = {
   recent: 'Recent',
   noExpenses: 'No expenses yet',
   addExpense: 'Add Expense',
+  editExpense: 'Edit Expense',
+  expensesStatistics: 'Statistics',
+  compareWithPeriod: 'Compare with Previous',
+  compareWithWeek: 'Compare with Last Week',
+  compareWithMonth: 'Compare with Last Month',
+  compareWithYear: 'Compare with Last Year',
+  increase: 'increase',
+  decrease: 'decrease',
+  categoryBreakdown: 'Category Breakdown',
   amount: 'Amount',
   description: 'Description',
   date: 'Date',
   category: 'Category',
   pet: 'Pet',
   selectPet: 'Select a pet',
+  week: 'Week',
+  month: 'Month',
+  year: 'Year',
+  all: 'All',
 
   importantDates: 'Important dates',
   comingUp: 'Coming Up',
@@ -392,12 +417,25 @@ const zh: Translations = {
   recent: '开支记录',
   noExpenses: '还没有记账记录',
   addExpense: '添加开支',
+  editExpense: '编辑开支',
+  expensesStatistics: '统计',
+  compareWithPeriod: '与上期对比',
+  compareWithWeek: '与上周对比',
+  compareWithMonth: '与上月对比',
+  compareWithYear: '与去年对比',
+  increase: '增加',
+  decrease: '减少',
+  categoryBreakdown: '分类明细',
   amount: '金额',
   description: '描述',
   date: '日期',
   category: '分类',
   pet: '宠物',
   selectPet: '选择宠物',
+  week: '周',
+  month: '月',
+  year: '年',
+  all: '全部',
 
   importantDates: '记录重要的日子',
   comingUp: '即将到来的纪念日',

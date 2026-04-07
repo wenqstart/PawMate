@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,9 +6,7 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  Image,
   Alert,
-  Modal,
   Platform,
   ActivityIndicator,
   Switch,
@@ -48,7 +46,7 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
     personality: editPet?.personality || [] as string[],
     bio: editPet?.bio || '',
     lookingFor: editPet?.lookingFor || '',
-    isLooking: editPet?.isLooking ?? true, // 默认开启征婚
+    isLooking: editPet?.isLooking ?? true,
   });
 
   const [personalityInput, setPersonalityInput] = useState('');
@@ -136,6 +134,12 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      {/* Header */}
+      <View style={styles.headerSection}>
+        <Text style={styles.headerTitle}>{isEdit ? t('editPet') : t('addPet')}</Text>
+        <Text style={styles.headerSubtitle}>{t('addPetSubtitle')}</Text>
+      </View>
+
       {/* Name */}
       <View style={styles.field}>
         <Text style={styles.label}>{t('petName')}<Text style={styles.required}>*</Text></Text>
@@ -144,6 +148,7 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
           value={formData.name}
           onChangeText={(text) => setFormData({ ...formData, name: text })}
           placeholder={t('petName')}
+          placeholderTextColor={COLORS.textTertiary}
         />
       </View>
 
@@ -157,11 +162,13 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
               style={[styles.typeButton, formData.type === type && styles.typeButtonActive]}
               onPress={() => setFormData({ ...formData, type })}
             >
-              <Ionicons
-                name={type === 'dog' ? 'paw' : type === 'cat' ? 'paw' : 'help-circle'}
-                size={24}
-                color={formData.type === type ? COLORS.textInverse : COLORS.textSecondary}
-              />
+              <View style={[styles.typeIcon, formData.type === type && styles.typeIconActive]}>
+                <Ionicons
+                  name={type === 'dog' ? 'paw' : type === 'cat' ? 'paw' : 'help-circle'}
+                  size={24}
+                  color={formData.type === type ? COLORS.textInverse : COLORS.textSecondary}
+                />
+              </View>
               <Text style={[styles.typeText, formData.type === type && styles.typeTextActive]}>
                 {t(type)}
               </Text>
@@ -178,6 +185,7 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
           value={formData.breed}
           onChangeText={(text) => setFormData({ ...formData, breed: text })}
           placeholder={t('breed')}
+          placeholderTextColor={COLORS.textTertiary}
         />
       </View>
 
@@ -189,14 +197,14 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
             style={[styles.genderButton, formData.gender === 'male' && styles.genderButtonActive]}
             onPress={() => setFormData({ ...formData, gender: 'male' })}
           >
-            <Ionicons name="male" size={20} color={formData.gender === 'male' ? COLORS.textInverse : COLORS.textSecondary} />
+            <Ionicons name="male" size={20} color={formData.gender === 'male' ? COLORS.textInverse : COLORS.info} />
             <Text style={[styles.genderText, formData.gender === 'male' && styles.genderTextActive]}>{t('male')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.genderButton, formData.gender === 'female' && styles.genderButtonActive]}
             onPress={() => setFormData({ ...formData, gender: 'female' })}
           >
-            <Ionicons name="female" size={20} color={formData.gender === 'female' ? COLORS.textInverse : COLORS.textSecondary} />
+            <Ionicons name="female" size={20} color={formData.gender === 'female' ? COLORS.textInverse : COLORS.error} />
             <Text style={[styles.genderText, formData.gender === 'female' && styles.genderTextActive]}>{t('female')}</Text>
           </TouchableOpacity>
         </View>
@@ -206,8 +214,10 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
       <View style={styles.field}>
         <Text style={styles.label}>{t('birthdayLabel')}<Text style={styles.required}>*</Text></Text>
         <TouchableOpacity style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
-          <Ionicons name="calendar-outline" size={20} color={COLORS.textSecondary} />
-          <Text style={styles.dateText}>{formData.birthday || t('selectDate')}</Text>
+          <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
+          <Text style={[styles.dateText, !formData.birthday && styles.dateTextPlaceholder]}>
+            {formData.birthday || t('selectDate')}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -230,6 +240,7 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
             value={personalityInput}
             onChangeText={setPersonalityInput}
             placeholder={t('personality')}
+            placeholderTextColor={COLORS.textTertiary}
             onSubmitEditing={addPersonalityTag}
           />
           <TouchableOpacity style={styles.addTagButton} onPress={addPersonalityTag}>
@@ -240,7 +251,7 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
           {formData.personality.map((tag, index) => (
             <TouchableOpacity key={index} style={styles.tag} onPress={() => removePersonalityTag(index)}>
               <Text style={styles.tagText}>{tag}</Text>
-              <Ionicons name="close-circle" size={16} color={COLORS.textSecondary} />
+              <Ionicons name="close-circle" size={16} color={COLORS.primary} />
             </TouchableOpacity>
           ))}
         </View>
@@ -254,6 +265,7 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
           value={formData.bio}
           onChangeText={(text) => setFormData({ ...formData, bio: text })}
           placeholder={t('aboutPet')}
+          placeholderTextColor={COLORS.textTertiary}
           multiline
           numberOfLines={4}
         />
@@ -267,6 +279,7 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
           value={formData.lookingFor}
           onChangeText={(text) => setFormData({ ...formData, lookingFor: text })}
           placeholder={t('lookingForCompanion')}
+          placeholderTextColor={COLORS.textTertiary}
           multiline
           numberOfLines={2}
         />
@@ -276,7 +289,9 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
       <View style={styles.field}>
         <View style={styles.switchRow}>
           <View style={styles.switchLabelContainer}>
-            <Ionicons name="heart" size={20} color={formData.isLooking ? COLORS.accent : COLORS.textTertiary} />
+            <View style={[styles.switchIcon, formData.isLooking && styles.switchIconActive]}>
+              <Ionicons name="heart" size={18} color={formData.isLooking ? COLORS.textInverse : COLORS.accent} />
+            </View>
             <Text style={styles.switchLabel}>{t('lookingToggle')}</Text>
           </View>
           <Switch
@@ -286,7 +301,7 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
             thumbColor={COLORS.textInverse}
           />
         </View>
-        <Text style={styles.switchHint}>
+        <Text style={[styles.switchHint, formData.isLooking && styles.switchHintActive]}>
           {formData.isLooking ? t('lookingOn') : t('lookingOff')}
         </Text>
       </View>
@@ -300,9 +315,14 @@ export default function AddPetScreen({ navigation, route }: AddPetScreenProps) {
         {loading ? (
           <ActivityIndicator color={COLORS.textInverse} />
         ) : (
-          <Text style={styles.saveButtonText}>{t('save')}</Text>
+          <>
+            <Ionicons name="checkmark-circle" size={20} color={COLORS.textInverse} />
+            <Text style={styles.saveButtonText}>{t('save')}</Text>
+          </>
         )}
       </TouchableOpacity>
+
+      <View style={{ height: SPACING.xxl }} />
     </ScrollView>
   );
 }
@@ -315,21 +335,34 @@ const styles = StyleSheet.create({
   content: {
     padding: SPACING.lg,
   },
+  headerSection: {
+    marginBottom: SPACING.lg,
+  },
+  headerTitle: {
+    fontSize: FONT_SIZE.xxl,
+    fontWeight: FONT_WEIGHT.bold,
+    color: COLORS.text,
+  },
+  headerSubtitle: {
+    fontSize: FONT_SIZE.sm,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.xs,
+  },
   field: {
     marginBottom: SPACING.lg,
   },
   label: {
     fontSize: FONT_SIZE.sm,
     fontWeight: FONT_WEIGHT.medium,
-    color: COLORS.textSecondary,
+    color: COLORS.text,
     marginBottom: SPACING.sm,
   },
   required: {
-    color: COLORS.accent,
+    color: COLORS.primary,
   },
   input: {
     backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: BORDER_RADIUS.lg,
     padding: SPACING.md,
     fontSize: FONT_SIZE.md,
     color: COLORS.text,
@@ -346,12 +379,10 @@ const styles = StyleSheet.create({
   },
   typeButton: {
     flex: 1,
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     padding: SPACING.md,
     backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: BORDER_RADIUS.lg,
     borderWidth: 1,
     borderColor: COLORS.border,
     gap: SPACING.xs,
@@ -360,9 +391,21 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     borderColor: COLORS.primary,
   },
+  typeIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: COLORS.primaryLight + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  typeIconActive: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+  },
   typeText: {
     fontSize: FONT_SIZE.sm,
     color: COLORS.textSecondary,
+    fontWeight: FONT_WEIGHT.medium,
   },
   typeTextActive: {
     color: COLORS.textInverse,
@@ -378,7 +421,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: SPACING.md,
     backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: BORDER_RADIUS.lg,
     borderWidth: 1,
     borderColor: COLORS.border,
     gap: SPACING.xs,
@@ -390,6 +433,7 @@ const styles = StyleSheet.create({
   genderText: {
     fontSize: FONT_SIZE.md,
     color: COLORS.textSecondary,
+    fontWeight: FONT_WEIGHT.medium,
   },
   genderTextActive: {
     color: COLORS.textInverse,
@@ -398,7 +442,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: BORDER_RADIUS.lg,
     padding: SPACING.md,
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -408,6 +452,9 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.md,
     color: COLORS.text,
   },
+  dateTextPlaceholder: {
+    color: COLORS.textTertiary,
+  },
   personalityInput: {
     flexDirection: 'row',
     gap: SPACING.sm,
@@ -415,7 +462,7 @@ const styles = StyleSheet.create({
   personalityTextInput: {
     flex: 1,
     backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: BORDER_RADIUS.lg,
     padding: SPACING.md,
     fontSize: FONT_SIZE.md,
     color: COLORS.text,
@@ -425,10 +472,15 @@ const styles = StyleSheet.create({
   addTagButton: {
     width: 48,
     height: 48,
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: BORDER_RADIUS.lg,
     backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   tagsContainer: {
     flexDirection: 'row',
@@ -439,22 +491,33 @@ const styles = StyleSheet.create({
   tag: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.divider,
+    backgroundColor: COLORS.primaryLight + '20',
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.xs,
     borderRadius: BORDER_RADIUS.md,
     gap: SPACING.xs,
+    borderWidth: 1,
+    borderColor: COLORS.primaryLight + '40',
   },
   tagText: {
     fontSize: FONT_SIZE.sm,
-    color: COLORS.text,
+    color: COLORS.primary,
+    fontWeight: FONT_WEIGHT.medium,
   },
   saveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.sm,
     backgroundColor: COLORS.primary,
     paddingVertical: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
-    alignItems: 'center',
+    borderRadius: BORDER_RADIUS.lg,
     marginTop: SPACING.lg,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   saveButtonDisabled: {
     opacity: 0.6,
@@ -462,7 +525,7 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: COLORS.textInverse,
     fontSize: FONT_SIZE.lg,
-    fontWeight: FONT_WEIGHT.semibold,
+    fontWeight: FONT_WEIGHT.bold,
   },
   switchRow: {
     flexDirection: 'row',
@@ -470,7 +533,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: COLORS.surface,
     padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: BORDER_RADIUS.lg,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
@@ -478,6 +541,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
+  },
+  switchIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: COLORS.accent + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  switchIconActive: {
+    backgroundColor: COLORS.accent,
   },
   switchLabel: {
     fontSize: FONT_SIZE.md,
@@ -487,7 +561,11 @@ const styles = StyleSheet.create({
   switchHint: {
     fontSize: FONT_SIZE.sm,
     color: COLORS.textTertiary,
-    marginTop: SPACING.xs,
+    marginTop: SPACING.sm,
     paddingHorizontal: SPACING.xs,
+  },
+  switchHintActive: {
+    color: COLORS.accent,
+    fontWeight: FONT_WEIGHT.medium,
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,29 +7,19 @@ import {
   Image,
   TouchableOpacity,
   Alert,
-  Platform,
-  TextInput,
-  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOWS } from '../theme';
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZE, FONT_WEIGHT } from '../theme';
 import { Pet } from '../firebase/auth';
-import { deletePet as firebaseDeletePet, updatePet as firebaseUpdatePet } from '../firebase/auth';
+import { deletePet as firebaseDeletePet } from '../firebase/auth';
 import { useI18n } from '../i18n';
 import { useAuth } from '../contexts/AuthContext';
 
-interface PetDetailScreenProps {
-  route: any;
-  navigation: any;
-}
-
-export default function PetDetailScreen({ route, navigation }: PetDetailScreenProps) {
+export default function PetDetailScreen({ route, navigation }: any) {
   const { user } = useAuth();
   const { t } = useI18n();
   const { pet } = route.params as { petId?: string; pet?: Pet };
   const [currentPet, setCurrentPet] = useState<Pet | null>(pet || null);
-  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const handleDelete = () => {
     if (!currentPet || !user) return;
@@ -67,7 +57,12 @@ export default function PetDetailScreen({ route, navigation }: PetDetailScreenPr
   if (!currentPet) {
     return (
       <View style={styles.container}>
-        <Text style={styles.errorText}>{t('noPets')}</Text>
+        <View style={styles.emptyContainer}>
+          <View style={styles.emptyIconContainer}>
+            <Ionicons name="paw" size={40} color={COLORS.primary} />
+          </View>
+          <Text style={styles.emptyTitle}>{t('noPets')}</Text>
+        </View>
       </View>
     );
   }
@@ -100,13 +95,16 @@ export default function PetDetailScreen({ route, navigation }: PetDetailScreenPr
             <Ionicons
               name={currentPet.gender === 'male' ? 'male' : 'female'}
               size={16}
-              color={currentPet.gender === 'male' ? '#5C7A99' : '#8B3A3A'}
+              color={currentPet.gender === 'male' ? COLORS.info : COLORS.error}
             />
           </View>
         </View>
 
         <Text style={styles.petBreed}>{currentPet.breed}</Text>
-        <Text style={styles.petAge}>{t('age')}: {calculateAge(currentPet.birthday)}</Text>
+        <View style={styles.ageRow}>
+          <Ionicons name="calendar" size={14} color={COLORS.primary} />
+          <Text style={styles.petAge}>{t('age')}: {calculateAge(currentPet.birthday)}</Text>
+        </View>
 
         {/* Personality Tags */}
         {currentPet.personality && currentPet.personality.length > 0 && (
@@ -124,15 +122,22 @@ export default function PetDetailScreen({ route, navigation }: PetDetailScreenPr
       {currentPet.bio && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('about')}</Text>
-          <Text style={styles.bioText}>{currentPet.bio}</Text>
+          <View style={styles.bioCard}>
+            <Text style={styles.bioText}>{currentPet.bio}</Text>
+          </View>
         </View>
       )}
 
       {/* Looking For */}
       {currentPet.lookingFor && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('lookingFor')}</Text>
-          <Text style={styles.lookingForText}>{currentPet.lookingFor}</Text>
+          <View style={styles.lookingForHeader}>
+            <Ionicons name="heart" size={18} color={COLORS.accent} />
+            <Text style={styles.sectionTitle}>{t('lookingFor')}</Text>
+          </View>
+          <View style={styles.lookingForCard}>
+            <Text style={styles.lookingForText}>{currentPet.lookingFor}</Text>
+          </View>
         </View>
       )}
 
@@ -155,7 +160,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   imageContainer: {
-    height: 300,
+    height: 320,
     position: 'relative',
   },
   petImage: {
@@ -168,13 +173,17 @@ const styles = StyleSheet.create({
     right: SPACING.lg,
   },
   editButton: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: BORDER_RADIUS.round,
     backgroundColor: COLORS.surface,
     alignItems: 'center',
     justifyContent: 'center',
-    ...SHADOWS.small,
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   infoSection: {
     padding: SPACING.lg,
@@ -190,25 +199,31 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   genderBadge: {
-    width: 28,
-    height: 28,
+    width: 32,
+    height: 32,
     borderRadius: BORDER_RADIUS.round,
-    backgroundColor: '#E8F4FD',
+    backgroundColor: COLORS.info + '20',
     alignItems: 'center',
     justifyContent: 'center',
   },
   genderBadgeFemale: {
-    backgroundColor: '#FDE8E8',
+    backgroundColor: COLORS.error + '20',
   },
   petBreed: {
     fontSize: FONT_SIZE.lg,
     color: COLORS.textSecondary,
     marginTop: SPACING.xs,
   },
+  ageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    marginTop: SPACING.xs,
+  },
   petAge: {
     fontSize: FONT_SIZE.md,
-    color: COLORS.textSecondary,
-    marginTop: SPACING.xs,
+    color: COLORS.primary,
+    fontWeight: FONT_WEIGHT.medium,
   },
   tagsContainer: {
     flexDirection: 'row',
@@ -217,10 +232,12 @@ const styles = StyleSheet.create({
     marginTop: SPACING.md,
   },
   tag: {
-    backgroundColor: COLORS.primary + '20',
+    backgroundColor: COLORS.primaryLight + '20',
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.xs,
     borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.primaryLight + '40',
   },
   tagText: {
     fontSize: FONT_SIZE.sm,
@@ -237,15 +254,35 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     marginBottom: SPACING.sm,
   },
+  lookingForHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  bioCard: {
+    backgroundColor: COLORS.surface,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
   bioText: {
     fontSize: FONT_SIZE.md,
-    color: COLORS.textSecondary,
+    color: COLORS.text,
     lineHeight: 22,
+  },
+  lookingForCard: {
+    backgroundColor: COLORS.accentLight + '25',
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.accent + '30',
   },
   lookingForText: {
     fontSize: FONT_SIZE.md,
-    color: COLORS.primary,
+    color: COLORS.accentDark,
     lineHeight: 22,
+    fontWeight: FONT_WEIGHT.medium,
   },
   actionsSection: {
     padding: SPACING.lg,
@@ -255,20 +292,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
-    borderWidth: 1,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1.5,
     borderColor: COLORS.error,
     gap: SPACING.sm,
+    backgroundColor: COLORS.error + '08',
   },
   deleteButtonText: {
     fontSize: FONT_SIZE.md,
     color: COLORS.error,
-    fontWeight: FONT_WEIGHT.medium,
+    fontWeight: FONT_WEIGHT.semibold,
   },
-  errorText: {
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SPACING.xxl,
+  },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: BORDER_RADIUS.round,
+    backgroundColor: COLORS.primaryLight + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.lg,
+  },
+  emptyTitle: {
     fontSize: FONT_SIZE.lg,
     color: COLORS.textSecondary,
-    textAlign: 'center',
-    marginTop: SPACING.xl,
   },
 });

@@ -44,7 +44,6 @@ export interface Message {
 
 export interface Expense {
   id: string;
-  petId: string;
   category: "food" | "medical" | "toys" | "grooming" | "other";
   amount: number;
   description: string;

@@ -93,7 +93,6 @@ export const mockDatingPets: Pet[] = [
 export const mockExpenses: Expense[] = [
   {
     id: '1',
-    petId: '1',
     category: 'food',
     amount: 158,
     description: '狗粮 10kg',
@@ -101,7 +100,6 @@ export const mockExpenses: Expense[] = [
   },
   {
     id: '2',
-    petId: '1',
     category: 'medical',
     amount: 280,
     description: '疫苗接种',
@@ -109,7 +107,6 @@ export const mockExpenses: Expense[] = [
   },
   {
     id: '3',
-    petId: '2',
     category: 'toys',
     amount: 89,
     description: '猫抓板和逗猫棒',
@@ -117,7 +114,6 @@ export const mockExpenses: Expense[] = [
   },
   {
     id: '4',
-    petId: '2',
     category: 'grooming',
     amount: 120,
     description: '洗澡美容',

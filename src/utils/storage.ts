@@ -69,6 +69,15 @@ export const addExpense = async (expense: Expense): Promise<void> => {
   await saveExpenses([...expenses, expense]);
 };
 
+export const updateExpense = async (updatedExpense: Expense): Promise<void> => {
+  const expenses = await getExpenses();
+  const index = expenses.findIndex(e => e.id === updatedExpense.id);
+  if (index !== -1) {
+    expenses[index] = updatedExpense;
+    await saveExpenses(expenses);
+  }
+};
+
 // Anniversary Storage
 export const getAnniversaries = async (): Promise<Anniversary[]> => {
   try {

@@ -53,11 +53,8 @@ export default function DatingScreen({ navigation }: any) {
     if (!user) return;
     setLoading(true);
     try {
-      // Get current user's pets
       const pets = await getUserPets(user.uid);
       setMyPets(pets);
-
-      // Get all pets from other users for browsing
       const allPets = await getAllPets(user.uid);
       setDatingPets(allPets);
     } catch (error) {
@@ -155,7 +152,9 @@ export default function DatingScreen({ navigation }: any) {
   if (!user) {
     return (
       <View style={styles.emptyContainer}>
-        <Ionicons name="heart-outline" size={60} color={COLORS.textTertiary} />
+        <View style={styles.emptyIconContainer}>
+          <Ionicons name="heart-outline" size={60} color={COLORS.primary} />
+        </View>
         <Text style={styles.emptyTitle}>{t('login') || 'Please login first'}</Text>
       </View>
     );
@@ -173,7 +172,7 @@ export default function DatingScreen({ navigation }: any) {
     return (
       <View style={styles.emptyContainer}>
         <View style={styles.emptyIconContainer}>
-          <Ionicons name="heart-outline" size={40} color={COLORS.textTertiary} />
+          <Ionicons name="heart-outline" size={40} color={COLORS.primary} />
         </View>
         <Text style={styles.emptyTitle}>{t('noMorePets')}</Text>
         <Text style={styles.emptySubtitle}>{t('checkLater')}</Text>
@@ -227,7 +226,7 @@ export default function DatingScreen({ navigation }: any) {
                   <Ionicons
                     name={currentPet.gender === 'male' ? 'male' : 'female'}
                     size={14}
-                    color={currentPet.gender === 'male' ? '#5C7A99' : '#8B3A3A'}
+                    color={currentPet.gender === 'male' ? COLORS.info : COLORS.error}
                   />
                 </View>
               </View>
@@ -285,13 +284,13 @@ export default function DatingScreen({ navigation }: any) {
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.infoButton}>
-          <Ionicons name="information-circle" size={28} color={COLORS.info} />
+          <Ionicons name="information-circle" size={28} color={COLORS.accent} />
         </TouchableOpacity>
       </View>
 
       {/* Tips */}
       <View style={styles.tipsContainer}>
-        <Ionicons name="bulb-outline" size={14} color={COLORS.textTertiary} />
+        <Ionicons name="paw" size={14} color={COLORS.primary} />
         <Text style={styles.tipsText}>
           {t('tapHeartToLike')}
         </Text>
@@ -325,7 +324,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: FONT_SIZE.xxl,
-    fontWeight: FONT_WEIGHT.semibold,
+    fontWeight: FONT_WEIGHT.bold,
     color: COLORS.text,
   },
   headerSubtitle: {
@@ -348,6 +347,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: COLORS.border,
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   carousel: {
     height: height * 0.35,
@@ -383,21 +387,21 @@ const styles = StyleSheet.create({
   },
   petNameLarge: {
     fontSize: FONT_SIZE.xxxl,
-    fontWeight: FONT_WEIGHT.semibold,
+    fontWeight: FONT_WEIGHT.bold,
     color: COLORS.textInverse,
   },
   genderBadge: {
-    width: 24,
-    height: 24,
+    width: 28,
+    height: 28,
     borderRadius: BORDER_RADIUS.round,
     alignItems: 'center',
     justifyContent: 'center',
   },
   genderMale: {
-    backgroundColor: 'rgba(92, 122, 153, 0.3)',
+    backgroundColor: 'rgba(92, 122, 153, 0.4)',
   },
   genderFemale: {
-    backgroundColor: 'rgba(139, 58, 58, 0.3)',
+    backgroundColor: 'rgba(212, 115, 107, 0.4)',
   },
   petDetails: {
     fontSize: FONT_SIZE.md,
@@ -424,7 +428,7 @@ const styles = StyleSheet.create({
   detailLabel: {
     fontSize: FONT_SIZE.sm,
     fontWeight: FONT_WEIGHT.medium,
-    color: COLORS.textSecondary,
+    color: COLORS.primary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -434,15 +438,17 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   tag: {
-    backgroundColor: COLORS.divider,
+    backgroundColor: COLORS.primaryLight + '20',
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.xs,
     borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.primaryLight + '40',
   },
   tagText: {
     fontSize: FONT_SIZE.sm,
     fontWeight: FONT_WEIGHT.medium,
-    color: COLORS.text,
+    color: COLORS.primary,
   },
   bioText: {
     fontSize: FONT_SIZE.md,
@@ -450,10 +456,12 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   lookingForBlock: {
-    backgroundColor: COLORS.divider,
+    backgroundColor: COLORS.accentLight + '30',
     padding: SPACING.md,
     borderRadius: BORDER_RADIUS.md,
     gap: SPACING.sm,
+    borderWidth: 1,
+    borderColor: COLORS.accent + '40',
   },
   lookingForHeader: {
     flexDirection: 'row',
@@ -462,8 +470,8 @@ const styles = StyleSheet.create({
   },
   lookingForLabel: {
     fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.medium,
-    color: COLORS.text,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: COLORS.accentDark,
   },
   lookingForText: {
     fontSize: FONT_SIZE.sm,
@@ -481,10 +489,15 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: BORDER_RADIUS.round,
     backgroundColor: COLORS.surface,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: COLORS.border,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   likeButton: {
     width: 72,
@@ -494,19 +507,29 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     borderRadius: BORDER_RADIUS.round,
-    backgroundColor: COLORS.accent,
+    backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 6,
   },
   infoButton: {
     width: 56,
     height: 56,
     borderRadius: BORDER_RADIUS.round,
     backgroundColor: COLORS.surface,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: COLORS.border,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   tipsContainer: {
     flexDirection: 'row',
@@ -527,17 +550,17 @@ const styles = StyleSheet.create({
     padding: SPACING.xxl,
   },
   emptyIconContainer: {
-    width: 80,
-    height: 80,
+    width: 100,
+    height: 100,
     borderRadius: BORDER_RADIUS.round,
-    backgroundColor: COLORS.divider,
+    backgroundColor: COLORS.primaryLight + '20',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: SPACING.lg,
   },
   emptyTitle: {
     fontSize: FONT_SIZE.lg,
-    fontWeight: FONT_WEIGHT.medium,
+    fontWeight: FONT_WEIGHT.semibold,
     color: COLORS.textSecondary,
   },
   emptySubtitle: {

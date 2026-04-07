@@ -5,7 +5,7 @@ import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SPACING } from './src/theme';
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZE, FONT_WEIGHT } from './src/theme';
 import { I18nProvider, useI18n } from './src/i18n';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 
@@ -22,6 +22,7 @@ import PhoneAuthScreen from './src/screens/PhoneAuthScreen';
 import MatchesScreen from './src/screens/MatchesScreen';
 import LikesScreen from './src/screens/LikesScreen';
 import ChatScreen from './src/screens/ChatScreen';
+import ExpenseStatsScreen from './src/screens/ExpenseStatsScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -42,7 +43,9 @@ function CustomHeader() {
       <ExpoStatusBar style="dark" />
       <View style={styles.headerContent}>
         <View style={styles.headerLeft}>
-          <Ionicons name="paw" size={24} color={COLORS.primary} />
+          <View style={styles.logoContainer}>
+            <Ionicons name="paw" size={22} color={COLORS.textInverse} />
+          </View>
           <Text style={styles.headerTitle}>PawMate</Text>
         </View>
         <View style={styles.headerRight}>
@@ -61,10 +64,9 @@ function CustomHeader() {
             <Ionicons name="people" size={22} color={COLORS.textSecondary} />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => {
-            console.log('Language button pressed');
             setLanguage(language === 'en' ? 'zh' : 'en');
           }} style={styles.langButton}>
-            <Text style={styles.langButtonText}>{language === 'en' ? 'EN' : '中'}</Text>
+            <Text style={styles.langButtonText}>{language === 'en' ? '中' : 'EN'}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -91,10 +93,22 @@ function MainTabs() {
           tabBarActiveTintColor: COLORS.primary,
           tabBarInactiveTintColor: COLORS.textSecondary,
           tabBarStyle: {
-            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+            backgroundColor: COLORS.surface,
             borderTopColor: COLORS.border,
+            borderTopWidth: 1,
             paddingBottom: 5,
-            height: 60,
+            paddingTop: 5,
+            height: 65,
+            shadowColor: COLORS.shadow,
+            shadowOffset: { width: 0, height: -2 },
+            shadowOpacity: 0.08,
+            shadowRadius: 8,
+            elevation: 8,
+          },
+          tabBarLabelStyle: {
+            fontSize: 11,
+            fontWeight: FONT_WEIGHT.medium,
+            marginTop: 2,
           },
           headerShown: false,
         })}
@@ -130,7 +144,12 @@ function AppNavigator() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <View style={styles.loadingContent}>
+          <View style={styles.loadingLogo}>
+            <Ionicons name="paw" size={40} color={COLORS.primary} />
+          </View>
+          <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 16 }} />
+        </View>
       </View>
     );
   }
@@ -142,19 +161,22 @@ function AppNavigator() {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: 'rgba(255, 255, 255, 0.95)' },
+        headerStyle: { backgroundColor: COLORS.surface },
         headerTintColor: COLORS.text,
-        headerTitleStyle: { fontWeight: '600' },
+        headerTitleStyle: { fontWeight: FONT_WEIGHT.semibold },
         headerShadowVisible: false,
+        headerBackTitleVisible: false,
+        headerTintColor: COLORS.primary,
       }}
     >
       <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
-      <Stack.Screen name="Community" component={CommunityScreen} options={{ title: t('community'), headerBackTitle: t('cancel') }} />
+      <Stack.Screen name="Community" component={CommunityScreen} options={{ title: t('community') }} />
       <Stack.Screen name="AddPet" component={AddPetScreen} options={({ route }) => ({ title: (route.params as any)?.isEdit ? t('editPet') : t('addPet') })} />
       <Stack.Screen name="PetDetail" component={PetDetailScreen} options={{ title: t('petInfo') }} />
       <Stack.Screen name="PetList" component={PetListScreen} options={{ title: t('myPets') }} />
       <Stack.Screen name="Chat" component={ChatScreen} options={{ title: t('chat') || 'Chat' }} />
       <Stack.Screen name="Likes" component={LikesScreen} options={{ title: t('receivedLikes') }} />
+      <Stack.Screen name="ExpenseStats" component={ExpenseStatsScreen} options={{ title: t('expensesStatistics') }} />
     </Stack.Navigator>
   );
 }
@@ -176,24 +198,58 @@ export default function App() {
 
 const styles = StyleSheet.create({
   customHeader: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: COLORS.surface,
     paddingTop: Platform.OS === 'ios' ? 50 : 40,
     paddingHorizontal: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 3,
   },
   headerContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
-  headerTitle: { fontSize: 22, fontWeight: '600', color: COLORS.text },
-  headerButton: { padding: 8 },
-  langButton: { backgroundColor: COLORS.primary, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 },
-  langButtonText: { fontSize: 12, fontWeight: '600', color: COLORS.textInverse },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs },
+  logoContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: { fontSize: 22, fontWeight: FONT_WEIGHT.bold, color: COLORS.text },
+  headerButton: { padding: 8, borderRadius: BORDER_RADIUS.md },
+  langButton: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: BORDER_RADIUS.round,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  langButtonText: { fontSize: 12, fontWeight: FONT_WEIGHT.bold, color: COLORS.textInverse },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: COLORS.background,
+  },
+  loadingContent: {
+    alignItems: 'center',
+  },
+  loadingLogo: {
+    width: 80,
+    height: 80,
+    borderRadius: BORDER_RADIUS.xl,
+    backgroundColor: COLORS.primaryLight + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

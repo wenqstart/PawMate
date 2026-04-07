@@ -22,7 +22,9 @@
       "Bash(watchman version:*)",
       "Bash(WATCHMAN_EMPTY_ENV_VAR=\"\" NODE_OPTIONS=\"--max-old-space-size=2048 --max-http-header-size=65536\" npx expo start --clear)",
       "Bash(npm ls:*)",
-      "Bash(curl -s http://localhost:8082)"
+      "Bash(curl -s http://localhost:8082)",
+      "WebFetch(domain:minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com)",
+      "Bash(pkill -f \"expo\")"
     ]
   }
 }

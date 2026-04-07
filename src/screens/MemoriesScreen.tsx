@@ -17,12 +17,6 @@ import { getPets, getAnniversaries, addAnniversary, saveAnniversaries } from '..
 import { mockAnniversaries } from '../data/mockData';
 import { useI18n } from '../i18n';
 
-const TYPE_LABELS: Record<string, string> = {
-  birthday: 'Birthday',
-  adoption: 'Adoption Day',
-  custom: 'Custom',
-};
-
 const TYPE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   birthday: 'gift',
   adoption: 'heart',
@@ -196,6 +190,7 @@ export default function MemoriesScreen() {
                       </View>
                       <View style={styles.anniversaryDetails}>
                         <View style={styles.petTag}>
+                          <Ionicons name="paw" size={10} color={COLORS.primary} />
                           <Text style={styles.petTagText}>{getPetName(ann.petId)}</Text>
                         </View>
                         <Text style={styles.anniversaryDate}>{ann.date}</Text>
@@ -213,13 +208,14 @@ export default function MemoriesScreen() {
         {anniversaries.length === 0 && (
           <View style={styles.emptyContainer}>
             <View style={styles.emptyIconContainer}>
-              <Ionicons name="calendar-outline" size={40} color={COLORS.textTertiary} />
+              <Ionicons name="calendar-outline" size={40} color={COLORS.primary} />
             </View>
             <Text style={styles.emptyText}>{t('noAnniversaries')}</Text>
             <TouchableOpacity
               style={styles.addFirstButton}
               onPress={() => setModalVisible(true)}
             >
+              <Ionicons name="add" size={16} color={COLORS.textInverse} />
               <Text style={styles.addFirstButtonText}>{t('addAnniversary')}</Text>
             </TouchableOpacity>
           </View>
@@ -252,9 +248,9 @@ export default function MemoriesScreen() {
                     selectedValue={formData.petId}
                     onValueChange={(value) => setFormData({ ...formData, petId: value })}
                   >
-                    <Picker.Item label={t('selectPet')} value="" />
+                    <Picker.Item label={t('selectPet')} value="" color={COLORS.textSecondary} />
                     {pets.map((pet) => (
-                      <Picker.Item key={pet.id} label={pet.name} value={pet.id} />
+                      <Picker.Item key={pet.id} label={pet.name} value={pet.id} color={COLORS.text} />
                     ))}
                   </Picker>
                 </View>
@@ -269,9 +265,9 @@ export default function MemoriesScreen() {
                       setFormData({ ...formData, type: value })
                     }
                   >
-                    <Picker.Item key="birthday" label={t('birthday')} value="birthday" />
-                    <Picker.Item key="adoption" label={t('adoptionDay')} value="adoption" />
-                    <Picker.Item key="custom" label={t('custom')} value="custom" />
+                    <Picker.Item key="birthday" label={t('birthday')} value="birthday" color={COLORS.text} />
+                    <Picker.Item key="adoption" label={t('adoptionDay')} value="adoption" color={COLORS.text} />
+                    <Picker.Item key="custom" label={t('custom')} value="custom" color={COLORS.text} />
                   </Picker>
                 </View>
               </View>
@@ -281,6 +277,7 @@ export default function MemoriesScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder={t('title')}
+                  placeholderTextColor={COLORS.textTertiary}
                   value={formData.title}
                   onChangeText={(text) => setFormData({ ...formData, title: text })}
                 />
@@ -291,6 +288,7 @@ export default function MemoriesScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="YYYY-MM-DD"
+                  placeholderTextColor={COLORS.textTertiary}
                   value={formData.date}
                   onChangeText={(text) => setFormData({ ...formData, date: text })}
                 />
@@ -301,6 +299,7 @@ export default function MemoriesScreen() {
                 <TextInput
                   style={[styles.input, styles.textArea]}
                   placeholder={t('notes')}
+                  placeholderTextColor={COLORS.textTertiary}
                   multiline
                   numberOfLines={3}
                   value={formData.notes}
@@ -332,7 +331,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: FONT_SIZE.xxl,
-    fontWeight: FONT_WEIGHT.semibold,
+    fontWeight: FONT_WEIGHT.bold,
     color: COLORS.text,
   },
   headerSubtitle: {
@@ -347,13 +346,23 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   upcomingSection: {
     margin: SPACING.lg,
     marginTop: 0,
     padding: SPACING.lg,
     backgroundColor: COLORS.primary,
-    borderRadius: BORDER_RADIUS.lg,
+    borderRadius: BORDER_RADIUS.xl,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   upcomingHeader: {
     flexDirection: 'row',
@@ -384,7 +393,7 @@ const styles = StyleSheet.create({
   upcomingIcon: {
     width: 36,
     height: 36,
-    borderRadius: BORDER_RADIUS.round,
+    borderRadius: BORDER_RADIUS.md,
     backgroundColor: 'rgba(255, 255, 255, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -407,7 +416,7 @@ const styles = StyleSheet.create({
   },
   daysBadgeText: {
     fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.semibold,
+    fontWeight: FONT_WEIGHT.bold,
     color: COLORS.textInverse,
   },
   section: {
@@ -430,10 +439,15 @@ const styles = StyleSheet.create({
   anniversaryCard: {
     backgroundColor: COLORS.surface,
     padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: BORDER_RADIUS.lg,
     marginBottom: SPACING.sm,
     borderWidth: 1,
     borderColor: COLORS.border,
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   anniversaryHeader: {
     flexDirection: 'row',
@@ -448,14 +462,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   daysTag: {
-    backgroundColor: COLORS.divider,
+    backgroundColor: COLORS.accentLight + '40',
     paddingHorizontal: SPACING.sm,
     paddingVertical: 2,
     borderRadius: BORDER_RADIUS.sm,
   },
   daysTagText: {
     fontSize: FONT_SIZE.xs,
-    color: COLORS.textSecondary,
+    color: COLORS.accentDark,
+    fontWeight: FONT_WEIGHT.medium,
   },
   anniversaryDetails: {
     flexDirection: 'row',
@@ -464,14 +479,17 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
   },
   petTag: {
-    backgroundColor: COLORS.divider,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: COLORS.primaryLight + '20',
     paddingHorizontal: SPACING.sm,
     paddingVertical: 2,
     borderRadius: BORDER_RADIUS.sm,
   },
   petTagText: {
     fontSize: FONT_SIZE.xs,
-    color: COLORS.textSecondary,
+    color: COLORS.primary,
     fontWeight: FONT_WEIGHT.medium,
   },
   anniversaryDate: {
@@ -481,22 +499,21 @@ const styles = StyleSheet.create({
   anniversaryNotes: {
     fontSize: FONT_SIZE.sm,
     color: COLORS.textSecondary,
-    fontStyle: 'italic',
   },
   emptyContainer: {
     backgroundColor: COLORS.surface,
     margin: SPACING.lg,
     padding: SPACING.xl,
-    borderRadius: BORDER_RADIUS.lg,
+    borderRadius: BORDER_RADIUS.xl,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: COLORS.border,
   },
   emptyIconContainer: {
-    width: 64,
-    height: 64,
+    width: 80,
+    height: 80,
     borderRadius: BORDER_RADIUS.round,
-    backgroundColor: COLORS.divider,
+    backgroundColor: COLORS.primaryLight + '20',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: SPACING.md,
@@ -507,14 +524,23 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.lg,
   },
   addFirstButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
     backgroundColor: COLORS.primary,
     paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.md,
+    paddingVertical: SPACING.md,
+    borderRadius: BORDER_RADIUS.round,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   addFirstButtonText: {
     color: COLORS.textInverse,
-    fontWeight: FONT_WEIGHT.medium,
+    fontWeight: FONT_WEIGHT.semibold,
+    fontSize: FONT_SIZE.sm,
   },
   modalOverlay: {
     flex: 1,
@@ -536,7 +562,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: FONT_SIZE.xl,
-    fontWeight: FONT_WEIGHT.semibold,
+    fontWeight: FONT_WEIGHT.bold,
     color: COLORS.text,
   },
   formGroup: {
@@ -555,6 +581,7 @@ const styles = StyleSheet.create({
     borderRadius: BORDER_RADIUS.md,
     padding: SPACING.md,
     fontSize: FONT_SIZE.md,
+    color: COLORS.text,
   },
   textArea: {
     height: 80,
@@ -573,10 +600,15 @@ const styles = StyleSheet.create({
     borderRadius: BORDER_RADIUS.md,
     alignItems: 'center',
     marginTop: SPACING.md,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   submitButtonText: {
     fontSize: FONT_SIZE.md,
-    fontWeight: FONT_WEIGHT.semibold,
+    fontWeight: FONT_WEIGHT.bold,
     color: COLORS.textInverse,
   },
 });
