@@ -6,7 +6,7 @@ export const COLORS = {
   primary: '#E07B5A',        // Coral orange - main brand color
   primaryLight: '#F0A080',  // Light coral
   primaryDark: '#C45A3A',   // Deep coral
-
+  primaryGreen: '#48BB78',
   // Accent - Complementary warm tones
   accent: '#F5B041',         // Golden amber
   accentLight: '#F8C471',    // Light gold
